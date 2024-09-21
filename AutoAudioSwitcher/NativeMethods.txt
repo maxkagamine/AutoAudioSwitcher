@@ -1,0 +1,13 @@
+// https://github.com/microsoft/CsWin32
+
+SetWinEventHook
+EVENT_SYSTEM_FOREGROUND
+EVENT_OBJECT_LOCATIONCHANGE
+WINEVENT_OUTOFCONTEXT
+
+GetForegroundWindow
+
+MonitorFromWindow
+
+GetMonitorInfo
+MONITORINFOF_PRIMARY
