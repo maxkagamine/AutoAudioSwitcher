@@ -11,3 +11,11 @@ MonitorFromWindow
 
 GetMonitorInfo
 MONITORINFOF_PRIMARY
+
+QueryDisplayConfig
+DisplayConfigGetDeviceInfo
+GetDisplayConfigBufferSizes
+DISPLAYCONFIG_TARGET_DEVICE_NAME
+DISPLAYCONFIG_SOURCE_DEVICE_NAME
+
+WM_DISPLAYCHANGE

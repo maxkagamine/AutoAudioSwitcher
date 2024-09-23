@@ -12,10 +12,11 @@ internal static class Program
     [STAThread]
     static void Main()
     {
-        CurrentMonitorMonitor monitorMonitor = new();
+        CurrentMonitorMonitor currentMonitorMonitor = new();
         AudioDeviceSwitcher audioDeviceSwitcher = new();
+        ConnectedMonitorsMonitor connectedMonitorsMonitor = new();
 
-        monitorMonitor.IsPrimaryChanged += (object? sender, bool isPrimary) =>
+        currentMonitorMonitor.IsPrimaryChanged += (object? sender, bool isPrimary) =>
         {
             audioDeviceSwitcher.SetDefaultPlaybackDevice(isPrimary ?
                 PrimaryMonitorAudioDevice : NonPrimaryMonitorAudioDevice);
