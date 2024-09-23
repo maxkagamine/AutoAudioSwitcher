@@ -2,34 +2,49 @@
 // Licensed under the Apache License, Version 2.0
 
 using CoreAudio;
-using System.Diagnostics;
+using Serilog;
 
 namespace AutoAudioSwitcher;
 
 internal class AudioDeviceSwitcher
 {
     private readonly MMDeviceEnumerator deviceEnumerator = new();
+    private readonly ILogger logger;
 
-    public AudioDeviceSwitcher()
+    public AudioDeviceSwitcher(ILogger logger)
     {
-#if DEBUG
-        MMDeviceCollection devices = EnumeratePlaybackDevices();
-        Debug.WriteLine($"Playback devices:\n  {string.Join("\n  ", devices.Select(GetDeviceName))}", nameof(AudioDeviceSwitcher));
-#endif
+        this.logger = logger = logger.ForContext<AudioDeviceSwitcher>();
+
+        try
+        {
+            MMDeviceCollection devices = EnumeratePlaybackDevices();
+            logger.Information("Playback devices: {Devices}", devices.Select(GetDeviceName));
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex, "Failed to enumerate playback devices");
+        }
     }
 
     public void SetDefaultPlaybackDevice(string name)
     {
-        MMDevice? device = EnumeratePlaybackDevices().FirstOrDefault(d => GetDeviceName(d) == name);
-
-        if (device is null)
+        try
         {
-            Debug.WriteLine($"No device with name \"{name}\".", nameof(SetDefaultPlaybackDevice));
-            return;
-        }
+            MMDevice? device = EnumeratePlaybackDevices().FirstOrDefault(d => GetDeviceName(d) == name);
 
-        Debug.WriteLine($"Switching to {name}", nameof(SetDefaultPlaybackDevice));
-        device.Selected = true;
+            if (device is null)
+            {
+                logger.Error("No device with name {Name}.", name);
+                return;
+            }
+
+            logger.Information("Switching to {Name}", name);
+            device.Selected = true;
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex, "Failed to set default playback device");
+        }
     }
 
     private MMDeviceCollection EnumeratePlaybackDevices() =>
