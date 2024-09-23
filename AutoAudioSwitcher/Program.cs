@@ -1,6 +1,7 @@
 // Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
@@ -16,6 +17,12 @@ internal class Program
     static ServiceProvider ConfigureServices()
     {
         ServiceCollection services = new();
+
+        IConfiguration config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        services.ConfigureObservable<Settings>(config);
 
         services.AddSingleton<ILogger>(_ => new LoggerConfiguration()
             .MinimumLevel.Verbose()
@@ -47,6 +54,12 @@ internal class Program
             logger.Fatal((Exception)e.ExceptionObject, "Unhandled exception.");
             provider.Dispose();
         };
+
+        var settings = provider.GetRequiredService<IObservable<Settings>>();
+        settings.Subscribe(currentSettings =>
+        {
+            logger.Debug("Loaded settings: {@Settings}", currentSettings);
+        });
 
         var currentMonitorMonitor = provider.GetRequiredService<CurrentMonitorMonitor>();
         var audioDeviceSwitcher = provider.GetRequiredService<AudioDeviceSwitcher>();
