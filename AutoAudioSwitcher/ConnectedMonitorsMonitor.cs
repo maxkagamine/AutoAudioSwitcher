@@ -18,7 +18,7 @@ namespace AutoAudioSwitcher;
 /// Enumerates and observes connected monitors. One might say it monitors them. The monitors, that is. This creates a
 /// hidden window to listen for window messages to detect monitors being connected and disconnected.
 /// </summary>
-internal class ConnectedMonitorsMonitor : NativeWindow, IDisposable
+internal class ConnectedMonitorsMonitor : NativeWindow
 {
     private const string UnknownMonitorName = "Unknown";
 
@@ -151,10 +151,5 @@ internal class ConnectedMonitorsMonitor : NativeWindow, IDisposable
         }
 
         base.WndProc(ref m);
-    }
-
-    public void Dispose()
-    {
-        monitors.Dispose();
     }
 }

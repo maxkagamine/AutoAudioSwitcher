@@ -15,7 +15,7 @@ namespace AutoAudioSwitcher;
 /// <summary>
 /// Monitors the current monitor.
 /// </summary>
-internal class CurrentMonitorMonitor : IDisposable
+internal class CurrentMonitorMonitor
 {
     private readonly Subject<Monitor> subject = new();
     private readonly ILogger logger;
@@ -74,10 +74,5 @@ internal class CurrentMonitorMonitor : IDisposable
         }
 
         subject.OnNext(monitor);
-    }
-
-    public void Dispose()
-    {
-        subject.Dispose();
     }
 }

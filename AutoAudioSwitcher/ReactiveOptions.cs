@@ -68,7 +68,6 @@ internal class ReactiveOptions<T> : IBehaviorObservable<T>, IDisposable where T 
 
     public void Dispose()
     {
-        subject.Dispose();
         changeTokenSubscription.Dispose();
     }
 }
