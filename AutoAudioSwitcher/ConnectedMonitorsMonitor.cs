@@ -33,6 +33,10 @@ internal class ConnectedMonitorsMonitor : NativeWindow
         CreateHandle(new CreateParams());
     }
 
+    /// <summary>
+    /// The connected monitors, as records containing both the GDI device name and friendly name. Observers will receive
+    /// the latest value immediately.
+    /// </summary>
     public IObservable<Monitor[]> ConnectedMonitors => monitors;
 
     public Monitor[] CurrentConnectedMonitors => monitors.Value;

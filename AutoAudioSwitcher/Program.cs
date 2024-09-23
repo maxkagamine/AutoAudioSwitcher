@@ -41,8 +41,9 @@ internal class Program
             .CreateLogger());
 
         services.AddSingleton<CurrentMonitorMonitor>();
-        services.AddSingleton<AudioDeviceSwitcher>();
+        services.AddSingleton<AudioDeviceManager>();
         services.AddSingleton<ConnectedMonitorsMonitor>();
+        services.AddSingleton<TrayIcon>();
 
         return services.BuildServiceProvider();
     }
@@ -66,6 +67,12 @@ internal class Program
             provider.Dispose();
         };
 
+        Application.ApplicationExit += (_, _) =>
+        {
+            logger.Information("Application is exiting.");
+            provider.Dispose();
+        };
+
         var settings = provider.GetRequiredService<IBehaviorObservable<Settings>>();
         settings.Subscribe(currentSettings =>
         {
@@ -85,7 +92,7 @@ internal class Program
         });
 
         var currentMonitorMonitor = provider.GetRequiredService<CurrentMonitorMonitor>();
-        var audioDeviceSwitcher = provider.GetRequiredService<AudioDeviceSwitcher>();
+        var audioDeviceManager = provider.GetRequiredService<AudioDeviceManager>();
         currentMonitorMonitor.CurrentMonitorChanged.Subscribe(currentMonitor =>
         {
             logger.Information("Current monitor is {CurrentMonitor}", currentMonitor.FriendlyName);
@@ -93,13 +100,16 @@ internal class Program
             if (settings.Value.Monitors.TryGetValue(currentMonitor.FriendlyName, out string? playbackDevice) &&
                 !string.IsNullOrEmpty(playbackDevice))
             {
-                audioDeviceSwitcher.SetDefaultPlaybackDevice(playbackDevice);
+                audioDeviceManager.SetDefaultPlaybackDevice(playbackDevice);
             }
             else
             {
                 logger.Information("No playback device set for {CurrentMonitor}", currentMonitor.FriendlyName);
             }
         });
+
+        var trayIcon = provider.GetRequiredService<TrayIcon>();
+        trayIcon.Show();
 
         Application.Run();
     }
