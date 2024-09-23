@@ -27,17 +27,10 @@ internal class ConnectedMonitorsMonitor : NativeWindow, IDisposable
 
     public ConnectedMonitorsMonitor(ILogger logger)
     {
-        this.logger = logger = logger.ForContext<ConnectedMonitorsMonitor>();
-
+        this.logger = logger.ForContext<ConnectedMonitorsMonitor>();
         monitors = new(GetMonitors());
-        monitors.Subscribe(currentMonitors =>
-        {
-            logger.Information("Connected monitors: {Monitors}",
-                currentMonitors.Select(m => $"{m.GdiDeviceName}: {m.FriendlyName}"));
-        });
 
         CreateHandle(new CreateParams());
-        this.logger = logger;
     }
 
     public IObservable<IEnumerable<Monitor>> ConnectedMonitors => monitors;
