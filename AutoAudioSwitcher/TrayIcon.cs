@@ -3,6 +3,7 @@
 
 using AutoAudioSwitcher.Properties;
 using System.Reactive.Linq;
+using System.Reflection;
 
 namespace AutoAudioSwitcher;
 
@@ -21,6 +22,17 @@ internal class TrayIcon : IDisposable
         {
             Text = Application.ProductName,
             Icon = Resources.TrayIconLight // TODO: Detect light/dark mode
+        };
+
+        notifyIcon.Click += (object? sender, EventArgs e) =>
+        {
+            if (e is MouseEventArgs { Button: MouseButtons.Left })
+            {
+                // There's no better way to do this
+                MethodInfo showContextMenu = typeof(NotifyIcon).GetMethod("ShowContextMenu",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!;
+                showContextMenu.Invoke(notifyIcon, null);
+            }
         };
 
         menu = Observable.CombineLatest(
