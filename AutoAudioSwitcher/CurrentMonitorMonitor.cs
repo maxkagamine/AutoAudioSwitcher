@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
-using System.Diagnostics;
+using Serilog;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32.Foundation;
@@ -16,10 +16,13 @@ namespace AutoAudioSwitcher;
 /// </summary>
 internal class CurrentMonitorMonitor
 {
+    private readonly ILogger logger;
     private bool lastIsPrimary = true;
 
-    public CurrentMonitorMonitor()
+    public CurrentMonitorMonitor(ILogger logger)
     {
+        this.logger = logger.ForContext<CurrentMonitorMonitor>();
+
         SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, null, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
         SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
@@ -31,14 +34,15 @@ internal class CurrentMonitorMonitor
         HWND foregroundWindow = GetForegroundWindow();
         if (foregroundWindow.IsNull)
         {
-            Debug.WriteLine("Foreground window is null", nameof(WinEventProc));
+            // According to the docs, "the foreground window can be null in certain circumstances, such as when a window
+            // is losing activation."
             return;
         }
 
         HMONITOR monitor = MonitorFromWindow(foregroundWindow, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONULL);
         if (monitor == 0)
         {
-            Debug.WriteLine("Monitor handle is null", nameof(WinEventProc));
+            // This can happen if "the window does not intersect a display monitor" for whatever reason.
             return;
         }
 
@@ -49,7 +53,7 @@ internal class CurrentMonitorMonitor
 
         if (!GetMonitorInfo(monitor, ref monitorInfo))
         {
-            Debug.WriteLine($"GetMonitorInfo failed: {Marshal.GetLastPInvokeErrorMessage()}", nameof(WinEventProc));
+            logger.Error("GetMonitorInfo failed: {Message}", Marshal.GetLastPInvokeErrorMessage());
             return;
         }
 
@@ -57,7 +61,7 @@ internal class CurrentMonitorMonitor
 
         if (isPrimary != lastIsPrimary)
         {
-            Debug.WriteLine($"isPrimary = {isPrimary}", nameof(WinEventProc));
+            logger.Debug("isPrimary = {IsPrimary}", isPrimary);
             IsPrimaryChanged?.Invoke(this, isPrimary);
         }
 
