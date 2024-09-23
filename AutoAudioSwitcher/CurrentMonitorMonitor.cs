@@ -2,7 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 
 using Serilog;
-using System.Runtime.CompilerServices;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Runtime.InteropServices;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -14,22 +15,24 @@ namespace AutoAudioSwitcher;
 /// <summary>
 /// Monitors the current monitor.
 /// </summary>
-internal class CurrentMonitorMonitor
+internal class CurrentMonitorMonitor : IDisposable
 {
+    private readonly Subject<Monitor> subject = new();
     private readonly ILogger logger;
-    private bool lastIsPrimary = true;
+    private readonly ConnectedMonitorsMonitor connectedMonitorsMonitor;
 
-    public CurrentMonitorMonitor(ILogger logger)
+    public CurrentMonitorMonitor(ConnectedMonitorsMonitor connectedMonitorsMonitor, ILogger logger)
     {
+        this.connectedMonitorsMonitor = connectedMonitorsMonitor;
         this.logger = logger.ForContext<CurrentMonitorMonitor>();
 
         SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, null, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
         SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
 
-    public event EventHandler<bool>? IsPrimaryChanged;
+    public IObservable<Monitor> CurrentMonitorChanged => subject.DistinctUntilChanged(x => x.GdiDeviceName);
 
-    private void WinEventProc(HWINEVENTHOOK hWinEventHook, uint @event, HWND hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
+    private unsafe void WinEventProc(HWINEVENTHOOK hWinEventHook, uint @event, HWND hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
     {
         HWND foregroundWindow = GetForegroundWindow();
         if (foregroundWindow.IsNull)
@@ -39,32 +42,42 @@ internal class CurrentMonitorMonitor
             return;
         }
 
-        HMONITOR monitor = MonitorFromWindow(foregroundWindow, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONULL);
-        if (monitor == 0)
+        HMONITOR monitorHandle = MonitorFromWindow(foregroundWindow, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONULL);
+        if (monitorHandle == 0)
         {
             // This can happen if "the window does not intersect a display monitor" for whatever reason.
             return;
         }
 
-        MONITORINFO monitorInfo = new()
+        MONITORINFOEXW monitorInfo = new()
         {
-            cbSize = (uint)Unsafe.SizeOf<MONITORINFO>()
+            monitorInfo = new()
+            {
+                cbSize = (uint)sizeof(MONITORINFOEXW)
+            }
         };
 
-        if (!GetMonitorInfo(monitor, ref monitorInfo))
+        if (!GetMonitorInfo(monitorHandle, (MONITORINFO*)&monitorInfo))
         {
             logger.Error("GetMonitorInfo failed: {Message}", Marshal.GetLastPInvokeErrorMessage());
             return;
         }
 
-        bool isPrimary = (monitorInfo.dwFlags & MONITORINFOF_PRIMARY) != 0;
-
-        if (isPrimary != lastIsPrimary)
+        string gdiDisplayName = monitorInfo.szDevice.ToString();
+        var currentMonitors = connectedMonitorsMonitor.CurrentConnectedMonitors;
+        Monitor? monitor = currentMonitors.FirstOrDefault(m => m.GdiDeviceName == gdiDisplayName);
+        if (monitor is null)
         {
-            logger.Debug("isPrimary = {IsPrimary}", isPrimary);
-            IsPrimaryChanged?.Invoke(this, isPrimary);
+            logger.Error("GetMonitorInfo returned {Monitor}, but the current connected monitors are {@CurrentConnectedMonitors}",
+                gdiDisplayName, currentMonitors);
+            return;
         }
 
-        lastIsPrimary = isPrimary;
+        subject.OnNext(monitor);
+    }
+
+    public void Dispose()
+    {
+        subject.Dispose();
     }
 }

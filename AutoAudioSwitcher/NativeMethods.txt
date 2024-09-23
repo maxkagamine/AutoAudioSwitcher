@@ -10,7 +10,7 @@ GetForegroundWindow
 MonitorFromWindow
 
 GetMonitorInfo
-MONITORINFOF_PRIMARY
+MONITORINFOEXW
 
 QueryDisplayConfig
 DisplayConfigGetDeviceInfo

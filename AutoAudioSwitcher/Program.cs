@@ -14,10 +14,6 @@ namespace AutoAudioSwitcher;
 
 internal class Program
 {
-    // TODO: Move to configuration (https://github.com/maxkagamine/AutoAudioSwitcher/issues/1)
-    private const string PrimaryMonitorAudioDevice = "Speakers2";
-    private const string NonPrimaryMonitorAudioDevice = "TV";
-
     static ServiceProvider ConfigureServices()
     {
         ServiceCollection services = new();
@@ -62,7 +58,7 @@ internal class Program
         var settings = provider.GetRequiredService<IBehaviorObservable<Settings>>();
         settings.Subscribe(currentSettings =>
         {
-            logger.Debug("Loaded settings: {@Settings}", currentSettings);
+            logger.Information("Loaded settings: {@Settings}", currentSettings);
         });
 
         var connectedMonitorsMonitor = provider.GetRequiredService<ConnectedMonitorsMonitor>();
@@ -76,12 +72,20 @@ internal class Program
 
         var currentMonitorMonitor = provider.GetRequiredService<CurrentMonitorMonitor>();
         var audioDeviceSwitcher = provider.GetRequiredService<AudioDeviceSwitcher>();
-
-        currentMonitorMonitor.IsPrimaryChanged += (object? sender, bool isPrimary) =>
+        currentMonitorMonitor.CurrentMonitorChanged.Subscribe(currentMonitor =>
         {
-            audioDeviceSwitcher.SetDefaultPlaybackDevice(isPrimary ?
-                PrimaryMonitorAudioDevice : NonPrimaryMonitorAudioDevice);
-        };
+            logger.Information("Current monitor is {CurrentMonitor}", currentMonitor.FriendlyName);
+
+            if (settings.Value.Monitors.TryGetValue(currentMonitor.FriendlyName, out string? playbackDevice) &&
+                !string.IsNullOrEmpty(playbackDevice))
+            {
+                audioDeviceSwitcher.SetDefaultPlaybackDevice(playbackDevice);
+            }
+            else
+            {
+                logger.Information("No playback device set for {CurrentMonitor}", currentMonitor.FriendlyName);
+            }
+        });
 
         Application.Run();
     }
