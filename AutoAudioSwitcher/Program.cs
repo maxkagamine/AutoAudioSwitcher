@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -14,6 +15,8 @@ namespace AutoAudioSwitcher;
 
 internal class Program
 {
+    private static readonly LoggingLevelSwitch levelSwitch = new(LogEventLevel.Error);
+
     static ServiceProvider ConfigureServices()
     {
         ServiceCollection services = new();
@@ -24,11 +27,14 @@ internal class Program
 
         services.ConfigureObservable<Settings>(config);
 
+        levelSwitch.MinimumLevel = config.GetValue<bool>(nameof(Settings.EnableDebugLogging)) ?
+            LogEventLevel.Debug : LogEventLevel.Error;
+
         services.AddSingleton<ILogger>(_ => new LoggerConfiguration()
             .MinimumLevel.Verbose()
             .WriteTo.Debug()
             .WriteTo.File("error.log",
-                restrictedToMinimumLevel: LogEventLevel.Error,
+                levelSwitch: levelSwitch,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 5,
                 fileSizeLimitBytes: 10485760 /* 10 MiB */)
@@ -63,6 +69,9 @@ internal class Program
         var settings = provider.GetRequiredService<IBehaviorObservable<Settings>>();
         settings.Subscribe(currentSettings =>
         {
+            levelSwitch.MinimumLevel = currentSettings.EnableDebugLogging ?
+                LogEventLevel.Debug : LogEventLevel.Error;
+
             logger.Information("Loaded settings: {@Settings}", currentSettings);
         });
 

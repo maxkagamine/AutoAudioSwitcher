@@ -13,6 +13,11 @@ internal class Settings : IEquatable<Settings?>
     /// </summary>
     public IReadOnlyDictionary<string, string> Monitors { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
+    /// <summary>
+    /// Whether to write debug messages to the error log.
+    /// </summary>
+    public bool EnableDebugLogging { get; init; }
+
     public override bool Equals(object? obj) => Equals(obj as Settings);
 
     public bool Equals(Settings? other)
