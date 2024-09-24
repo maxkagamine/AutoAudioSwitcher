@@ -44,8 +44,13 @@ internal class Program
     [STAThread]
     static void Main()
     {
-        Environment.CurrentDirectory = AppContext.BaseDirectory;
+        using Mutex singleInstance = new(true, "392d8dc8-9bdc-4844-a7c8-dbf3e08bb2bc", out bool createdNew);
+        if (!createdNew)
+        {
+            return;
+        }
 
+        Environment.CurrentDirectory = AppContext.BaseDirectory;
         ServiceProvider provider = ConfigureServices();
 
         var logger = provider.GetRequiredService<ILogger>();
