@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 
 using AutoAudioSwitcher.Properties;
+using Serilog;
 using System.Reactive.Linq;
 using System.Reflection;
 
@@ -9,6 +10,9 @@ namespace AutoAudioSwitcher;
 
 internal class TrayIcon : IDisposable
 {
+    private const string EmptyStringMenuItem = "(Don't switch)";
+
+    private readonly ILogger logger;
     private readonly NotifyIcon notifyIcon;
     private readonly IObservable<ContextMenuStrip> menu;
     private IDisposable? menuSubscription;
@@ -16,8 +20,11 @@ internal class TrayIcon : IDisposable
     public TrayIcon(
         ConnectedMonitorsMonitor connectedMonitorsMonitor,
         AudioDeviceManager audioDeviceManager,
-        IBehaviorObservable<Settings> settings)
+        IBehaviorObservable<Settings> settings,
+        ILogger logger)
     {
+        this.logger = logger = logger.ForContext<TrayIcon>();
+
         notifyIcon = new()
         {
             Text = Application.ProductName,
@@ -50,19 +57,12 @@ internal class TrayIcon : IDisposable
                     ToolStripMenuItem monitorItem = new(
                         text: monitorName,
                         image: null,
-                        dropDownItems: playbackDevices
-                            .Select(deviceName =>
-                            {
-                                ToolStripMenuItem deviceItem = new(deviceName)
-                                {
-                                    Checked = deviceName == monitorPlaybackDevice
-                                };
-
-                                // TODO: Update settings when clicked; add "(Don't switch)" option equal to empty string
-
-                                return deviceItem;
-                            })
-                            .ToArray());
+                        dropDownItems: [
+                            .. playbackDevices.Select(deviceName =>
+                                new PlaybackDeviceMenuItem(this, monitorName, deviceName, monitorPlaybackDevice)),
+                            new ToolStripSeparator(),
+                            new PlaybackDeviceMenuItem(this, monitorName, "", monitorPlaybackDevice)
+                        ]);
 
                     menu.Items.Add(monitorItem);
                 }
@@ -89,11 +89,39 @@ internal class TrayIcon : IDisposable
         });
     }
 
+    private void OnPlaybackDeviceMenuItemClicked(object? sender, EventArgs e)
+    {
+        var item = (PlaybackDeviceMenuItem)sender!;
+
+        logger.Debug("PlaybackDeviceMenuItem clicked: MonitorName = {MonitorName}, DeviceName = {DeviceName}",
+            item.MonitorName, item.DeviceName);
+    }
+
     public void Dispose()
     {
         menuSubscription?.Dispose();
 
         notifyIcon.Visible = false;
         notifyIcon.Dispose();
+    }
+
+    private class PlaybackDeviceMenuItem : ToolStripMenuItem
+    {
+        public PlaybackDeviceMenuItem(
+            TrayIcon trayIcon,
+            string monitorName,
+            string deviceName,
+            string? deviceNameSetForMonitor)
+            : base(deviceName == "" ? EmptyStringMenuItem : deviceName)
+        {
+            MonitorName = monitorName;
+            DeviceName = deviceName;
+            Checked = deviceName == (deviceNameSetForMonitor ?? "");
+            Click += trayIcon.OnPlaybackDeviceMenuItemClicked;
+        }
+
+        public string MonitorName { get; }
+
+        public string DeviceName { get; }
     }
 }
