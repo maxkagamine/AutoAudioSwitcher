@@ -17,6 +17,11 @@ internal class Program
     {
         ServiceCollection services = new();
 
+        if (!File.Exists("appsettings.json"))
+        {
+            new Settings().Save();
+        }
+
         IConfiguration config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
