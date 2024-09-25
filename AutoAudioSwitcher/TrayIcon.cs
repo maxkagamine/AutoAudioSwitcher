@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0
 
 using AutoAudioSwitcher.Properties;
+using Microsoft.Win32;
 using Serilog;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reflection;
 
@@ -14,9 +16,9 @@ internal class TrayIcon : IDisposable
 
     private readonly ILogger logger;
     private readonly NotifyIcon notifyIcon;
-    private readonly IObservable<ContextMenuStrip> menu;
     private readonly IBehaviorObservable<Settings> settings;
-    private IDisposable? menuSubscription;
+    private readonly IObservable<ContextMenuStrip> menu;
+    private readonly CompositeDisposable subscriptions = [];
 
     public TrayIcon(
         ConnectedMonitorsMonitor connectedMonitorsMonitor,
@@ -29,9 +31,14 @@ internal class TrayIcon : IDisposable
 
         notifyIcon = new()
         {
-            Text = Application.ProductName,
-            Icon = Resources.TrayIconLight // TODO: Detect light/dark mode
+            Text = Application.ProductName
         };
+
+        UpdateIcon();
+        subscriptions.Add(Observable.FromEventPattern<UserPreferenceChangedEventHandler, UserPreferenceChangedEventArgs>(
+            handler => SystemEvents.UserPreferenceChanged += handler,
+            handler => SystemEvents.UserPreferenceChanged -= handler)
+            .Subscribe(_ => UpdateIcon()));
 
         notifyIcon.Click += (object? sender, EventArgs e) =>
         {
@@ -85,13 +92,18 @@ internal class TrayIcon : IDisposable
             });
     }
 
+    private void UpdateIcon()
+    {
+        notifyIcon.Icon = Application.IsDarkModeEnabled ? Resources.TrayIconLight : Resources.TrayIconDark;
+    }
+
     public void Show()
     {
-        menuSubscription = menu.Subscribe(menu =>
+        subscriptions.Add(menu.Subscribe(menu =>
         {
             notifyIcon.ContextMenuStrip = menu;
             notifyIcon.Visible = true;
-        });
+        }));
     }
 
     private void OnPlaybackDeviceMenuItemClicked(object? sender, EventArgs e)
@@ -123,7 +135,7 @@ internal class TrayIcon : IDisposable
 
     public void Dispose()
     {
-        menuSubscription?.Dispose();
+        subscriptions.Dispose();
 
         notifyIcon.Visible = false;
         notifyIcon.Dispose();

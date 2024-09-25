@@ -57,6 +57,8 @@ internal class Program
             return;
         }
 
+        ApplicationConfiguration.Initialize();
+        Application.SetColorMode(SystemColorMode.System);
         Environment.CurrentDirectory = AppContext.BaseDirectory;
         ServiceProvider provider = ConfigureServices();
 
