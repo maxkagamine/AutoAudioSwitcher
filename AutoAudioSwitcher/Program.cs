@@ -57,6 +57,8 @@ internal class Program
             return;
         }
 
+        //CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = new("ja-JP");
+
         ApplicationConfiguration.Initialize();
         Application.SetColorMode(SystemColorMode.System);
         Environment.CurrentDirectory = AppContext.BaseDirectory;

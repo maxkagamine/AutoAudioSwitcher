@@ -1,6 +1,8 @@
+[日本語](README.ja.md)
+
 # Auto Audio Switcher
 
-<img src="https://github.com/user-attachments/assets/16924db8-b00a-4193-b0d9-2f6e2eccd684" width="309" align="right" />
+<img src=".github/images/screenshot_en.png" width="309" align="right" />
 
 Switches the default playback device based on the focused window's monitor.
 
@@ -11,7 +13,7 @@ For example, if you open a media player and Win+Shift+Left/Right it over to the 
 1. Install the [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
 2. Download and extract the [latest release](https://github.com/maxkagamine/AutoAudioSwitcher/releases/latest)
    - Not to Program Files; the app needs to be able to write to its install directory to save settings and log errors
-3. Place a shortcut in Startup (`%appdata%\Microsoft\Windows\Start Menu\Programs\Startup`)
+3. Place a shortcut in Startup (Win+R "shell:startup")
 
 ## Usage notes
 

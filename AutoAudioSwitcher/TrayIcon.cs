@@ -11,8 +11,6 @@ namespace AutoAudioSwitcher;
 
 internal class TrayIcon : IDisposable
 {
-    private const string EmptyStringMenuItem = "(Don't switch)";
-
     private readonly ILogger logger;
     private readonly NotifyIcon notifyIcon;
     private readonly IBehaviorObservable<Settings> settings;
@@ -30,7 +28,7 @@ internal class TrayIcon : IDisposable
 
         notifyIcon = new()
         {
-            Text = Application.ProductName
+            Text = Resources.ProgramName
         };
 
         UpdateIcon();
@@ -63,7 +61,7 @@ internal class TrayIcon : IDisposable
                     string monitorPlaybackDevice = settings.Monitors.GetValueOrDefault(monitorName) ?? "";
 
                     ToolStripMenuItem monitorItem = new(
-                        text: monitorName,
+                        text: monitorName.Replace("&", "&&"),
                         image: null,
                         dropDownItems: [
                             .. playbackDevices.Select(deviceName =>
@@ -77,11 +75,11 @@ internal class TrayIcon : IDisposable
 
                 menu.Items.Add(new ToolStripSeparator());
 
-                ToolStripMenuItem enabledItem = new("Enabled") { Checked = settings.Enabled };
+                ToolStripMenuItem enabledItem = new(Resources.Enabled) { Checked = settings.Enabled };
                 enabledItem.Click += OnEnabledClicked;
                 menu.Items.Add(enabledItem);
 
-                ToolStripMenuItem exitItem = new("Exit");
+                ToolStripMenuItem exitItem = new(Resources.Exit);
                 exitItem.Click += (_, _) => Application.Exit();
                 menu.Items.Add(exitItem);
 
@@ -154,7 +152,7 @@ internal class TrayIcon : IDisposable
             string monitorName,
             string deviceName,
             string? deviceNameSetForMonitor)
-            : base(deviceName == "" ? EmptyStringMenuItem : deviceName)
+            : base(deviceName == "" ? Resources.EmptyStringMenuItem : deviceName.Replace("&", "&&"))
         {
             MonitorName = monitorName;
             DeviceName = deviceName;

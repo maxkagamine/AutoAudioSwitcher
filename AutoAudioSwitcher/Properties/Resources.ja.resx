@@ -118,28 +118,28 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="TrayIconDark" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\trayicon_dark.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="TrayIconDark" type="System.Resources.ResXNullRef, System.Windows.Forms">
+    <value />
   </data>
-  <data name="TrayIconLight" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\trayicon_light.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="TrayIconLight" type="System.Resources.ResXNullRef, System.Windows.Forms">
+    <value />
   </data>
-  <data name="TrayIconDarkDisabled" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\trayicon_dark_disabled.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="TrayIconDarkDisabled" type="System.Resources.ResXNullRef, System.Windows.Forms">
+    <value />
   </data>
-  <data name="TrayIconLightDisabled" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\trayicon_light_disabled.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="TrayIconLightDisabled" type="System.Resources.ResXNullRef, System.Windows.Forms">
+    <value />
   </data>
   <data name="EmptyStringMenuItem" xml:space="preserve">
-    <value>(Don't switch)</value>
+    <value>(切り替えない)</value>
   </data>
   <data name="Enabled" xml:space="preserve">
-    <value>Enabled</value>
+    <value>有効</value>
   </data>
   <data name="Exit" xml:space="preserve">
-    <value>Exit</value>
+    <value>終了</value>
   </data>
   <data name="ProgramName" xml:space="preserve">
-    <value>Auto Audio Switcher</value>
+    <value>オートオーディオスイッチャー</value>
   </data>
 </root>
