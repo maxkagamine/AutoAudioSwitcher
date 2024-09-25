@@ -8,7 +8,9 @@ using System.Runtime.InteropServices;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.Accessibility;
+using Windows.Win32.UI.WindowsAndMessaging;
 using static Windows.Win32.PInvoke;
+using static Windows.Win32.UI.WindowsAndMessaging.OBJECT_IDENTIFIER;
 
 namespace AutoAudioSwitcher;
 
@@ -44,6 +46,21 @@ internal class CurrentMonitorMonitor
 
     private unsafe void WinEventProc(HWINEVENTHOOK hWinEventHook, uint @event, HWND hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
     {
+        if (idObject != (int)OBJID_WINDOW)
+        {
+            // EVENT_OBJECT_LOCATIONCHANGE also fires for the cursor and text caret
+            return;
+        }
+
+        logger.Verbose("Received WinEvent {Event} (hwnd = {Hwnd}, idObject = {ObjectId}, idChild = {ChildId})",
+            @event switch
+            {
+                EVENT_SYSTEM_FOREGROUND => nameof(EVENT_SYSTEM_FOREGROUND),
+                EVENT_OBJECT_LOCATIONCHANGE => nameof(EVENT_OBJECT_LOCATIONCHANGE),
+                _ => @event.ToString()
+            },
+            hwnd, (OBJECT_IDENTIFIER)idObject, idChild);
+
         HWND foregroundWindow = GetForegroundWindow();
         if (foregroundWindow.IsNull)
         {
