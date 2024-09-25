@@ -73,8 +73,9 @@ internal class TrayIcon : IDisposable
 
                 menu.Items.Add(new ToolStripSeparator());
 
-                // TODO: Handle enabled/disabled
-                menu.Items.Add(new ToolStripMenuItem("Enabled") { Checked = true, CheckOnClick = true });
+                ToolStripMenuItem enabledItem = new("Enabled") { Checked = settings.Enabled };
+                enabledItem.Click += OnEnabledClicked;
+                menu.Items.Add(enabledItem);
 
                 ToolStripMenuItem exitItem = new("Exit");
                 exitItem.Click += (_, _) => Application.Exit();
@@ -97,7 +98,7 @@ internal class TrayIcon : IDisposable
     {
         var item = (PlaybackDeviceMenuItem)sender!;
 
-        logger.Debug("PlaybackDeviceMenuItem clicked: MonitorName = {MonitorName}, DeviceName = {DeviceName}",
+        logger.Debug("Setting playback device for {MonitorName} to {DeviceName}",
             item.MonitorName, item.DeviceName);
 
         var newSettings = settings.Value with
@@ -107,6 +108,15 @@ internal class TrayIcon : IDisposable
                 [item.MonitorName] = item.DeviceName
             }
         };
+
+        newSettings.Save();
+    }
+
+    private void OnEnabledClicked(object? sender, EventArgs e)
+    {
+        var newSettings = settings.Value with { Enabled = !settings.Value.Enabled };
+
+        logger.Debug("Changing Enabled to {Enabled}", newSettings.Enabled);
 
         newSettings.Save();
     }

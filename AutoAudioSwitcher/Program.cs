@@ -94,6 +94,11 @@ internal class Program
         var audioDeviceManager = provider.GetRequiredService<AudioDeviceManager>();
         currentMonitorMonitor.CurrentMonitorChanged.Subscribe(currentMonitor =>
         {
+            if (!settings.Value.Enabled)
+            {
+                return;
+            }
+
             logger.Information("Current monitor is {CurrentMonitor}", currentMonitor.FriendlyName);
 
             if (settings.Value.Monitors.TryGetValue(currentMonitor.FriendlyName, out string? playbackDevice) &&

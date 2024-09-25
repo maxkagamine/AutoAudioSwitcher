@@ -17,6 +17,11 @@ internal sealed record Settings : IEquatable<Settings?>
     public IReadOnlyDictionary<string, string> Monitors { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>
+    /// If false, the application will remain running in the tray but auto-switching will be temporarily disabled.
+    /// </summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>
     /// Log level for the error log. Can be set to "Debug" to enable debug logging.
     /// </summary>
     public LogEventLevel LogLevel { get; init; } = LogEventLevel.Error;
@@ -35,6 +40,7 @@ internal sealed record Settings : IEquatable<Settings?>
         return other is not null &&
                Monitors.Count == other.Monitors.Count &&
                Monitors.All(x => other.Monitors.TryGetValue(x.Key, out var value) && value.Equals(x.Value)) &&
+               Enabled == other.Enabled &&
                LogLevel == other.LogLevel;
     }
 
@@ -42,6 +48,7 @@ internal sealed record Settings : IEquatable<Settings?>
     {
         return HashCode.Combine(
             Monitors.Count,
+            Enabled,
             LogLevel);
     }
 }
