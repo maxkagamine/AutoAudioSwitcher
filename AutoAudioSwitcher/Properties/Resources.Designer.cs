@@ -73,9 +73,29 @@ namespace AutoAudioSwitcher.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
+        internal static System.Drawing.Icon TrayIconDarkDisabled {
+            get {
+                object obj = ResourceManager.GetObject("TrayIconDarkDisabled", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
         internal static System.Drawing.Icon TrayIconLight {
             get {
                 object obj = ResourceManager.GetObject("TrayIconLight", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
+        internal static System.Drawing.Icon TrayIconLightDisabled {
+            get {
+                object obj = ResourceManager.GetObject("TrayIconLightDisabled", resourceCulture);
                 return ((System.Drawing.Icon)(obj));
             }
         }

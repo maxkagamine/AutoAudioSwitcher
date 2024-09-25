@@ -6,7 +6,6 @@ using Microsoft.Win32;
 using Serilog;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Reflection;
 
 namespace AutoAudioSwitcher;
 
@@ -35,6 +34,7 @@ internal class TrayIcon : IDisposable
         };
 
         UpdateIcon();
+        subscriptions.Add(settings.Subscribe(_ => UpdateIcon()));
         subscriptions.Add(Observable.FromEventPattern<UserPreferenceChangedEventHandler, UserPreferenceChangedEventArgs>(
             handler => SystemEvents.UserPreferenceChanged += handler,
             handler => SystemEvents.UserPreferenceChanged -= handler)
@@ -44,10 +44,7 @@ internal class TrayIcon : IDisposable
         {
             if (e is MouseEventArgs { Button: MouseButtons.Left })
             {
-                // There's no better way to do this
-                MethodInfo showContextMenu = typeof(NotifyIcon).GetMethod("ShowContextMenu",
-                    BindingFlags.Instance | BindingFlags.NonPublic)!;
-                showContextMenu.Invoke(notifyIcon, null);
+                OnEnabledClicked(null, EventArgs.Empty);
             }
         };
 
@@ -92,9 +89,17 @@ internal class TrayIcon : IDisposable
             });
     }
 
-    private void UpdateIcon()
+    private void UpdateIcon(Settings? settings = null)
     {
-        notifyIcon.Icon = Application.IsDarkModeEnabled ? Resources.TrayIconLight : Resources.TrayIconDark;
+        settings ??= this.settings.Value;
+
+        notifyIcon.Icon = (Application.IsDarkModeEnabled, settings.Enabled) switch
+        {
+            (true, true) => Resources.TrayIconLight,
+            (true, false) => Resources.TrayIconLightDisabled,
+            (false, true) => Resources.TrayIconDark,
+            (false, false) => Resources.TrayIconDarkDisabled
+        };
     }
 
     public void Show()
@@ -130,6 +135,7 @@ internal class TrayIcon : IDisposable
 
         logger.Debug("Changing Enabled to {Enabled}", newSettings.Enabled);
 
+        UpdateIcon(newSettings); // Update icon with no delay
         newSettings.Save();
     }
 
