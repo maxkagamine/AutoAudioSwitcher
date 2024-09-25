@@ -6,10 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Unicode;
 
 namespace AutoAudioSwitcher;
 
@@ -21,14 +17,18 @@ internal class Program
     {
         ServiceCollection services = new();
 
+        if (!File.Exists("appsettings.json"))
+        {
+            new Settings().Save();
+        }
+
         IConfiguration config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
 
         services.ConfigureObservable<Settings>(config);
 
-        levelSwitch.MinimumLevel = config.GetValue<bool>(nameof(Settings.EnableDebugLogging)) ?
-            LogEventLevel.Debug : LogEventLevel.Error;
+        levelSwitch.MinimumLevel = config.GetValue<LogEventLevel>(nameof(Settings.LogLevel));
 
         services.AddSingleton<ILogger>(_ => new LoggerConfiguration()
             .MinimumLevel.Debug()
@@ -41,8 +41,9 @@ internal class Program
             .CreateLogger());
 
         services.AddSingleton<CurrentMonitorMonitor>();
-        services.AddSingleton<AudioDeviceSwitcher>();
+        services.AddSingleton<AudioDeviceManager>();
         services.AddSingleton<ConnectedMonitorsMonitor>();
+        services.AddSingleton<TrayIcon>();
 
         return services.BuildServiceProvider();
     }
@@ -56,6 +57,8 @@ internal class Program
             return;
         }
 
+        ApplicationConfiguration.Initialize();
+        Application.SetColorMode(SystemColorMode.System);
         Environment.CurrentDirectory = AppContext.BaseDirectory;
         ServiceProvider provider = ConfigureServices();
 
@@ -66,11 +69,16 @@ internal class Program
             provider.Dispose();
         };
 
+        Application.ApplicationExit += (_, _) =>
+        {
+            logger.Information("Application is exiting.");
+            provider.Dispose();
+        };
+
         var settings = provider.GetRequiredService<IBehaviorObservable<Settings>>();
         settings.Subscribe(currentSettings =>
         {
-            levelSwitch.MinimumLevel = currentSettings.EnableDebugLogging ?
-                LogEventLevel.Debug : LogEventLevel.Error;
+            levelSwitch.MinimumLevel = currentSettings.LogLevel;
 
             logger.Information("Loaded settings: {@Settings}", currentSettings);
         });
@@ -85,21 +93,29 @@ internal class Program
         });
 
         var currentMonitorMonitor = provider.GetRequiredService<CurrentMonitorMonitor>();
-        var audioDeviceSwitcher = provider.GetRequiredService<AudioDeviceSwitcher>();
+        var audioDeviceManager = provider.GetRequiredService<AudioDeviceManager>();
         currentMonitorMonitor.CurrentMonitorChanged.Subscribe(currentMonitor =>
         {
+            if (!settings.Value.Enabled)
+            {
+                return;
+            }
+
             logger.Information("Current monitor is {CurrentMonitor}", currentMonitor.FriendlyName);
 
             if (settings.Value.Monitors.TryGetValue(currentMonitor.FriendlyName, out string? playbackDevice) &&
                 !string.IsNullOrEmpty(playbackDevice))
             {
-                audioDeviceSwitcher.SetDefaultPlaybackDevice(playbackDevice);
+                audioDeviceManager.SetDefaultPlaybackDevice(playbackDevice);
             }
             else
             {
                 logger.Information("No playback device set for {CurrentMonitor}", currentMonitor.FriendlyName);
             }
         });
+
+        var trayIcon = provider.GetRequiredService<TrayIcon>();
+        trayIcon.Show();
 
         Application.Run();
     }
@@ -122,34 +138,14 @@ internal class Program
 
             logger.Information("Adding new monitors to appsettings.json: {Monitors}", newMonitors);
 
-            using var file = File.Open("appsettings.json", FileMode.Open, FileAccess.ReadWrite);
-
-            JsonNode? rootNode = JsonNode.Parse(
-                file,
-                new JsonNodeOptions() { PropertyNameCaseInsensitive = true },
-                new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip });
-
-            JsonNode? monitorsNode = rootNode?[nameof(Settings.Monitors)];
-
-            if (monitorsNode is not JsonObject)
+            var newSettings = settings.Value with
             {
-                return;
-            }
+                Monitors = new Dictionary<string, string>([
+                    .. settings.Value.Monitors,
+                    .. newMonitors.Select(m => new KeyValuePair<string, string>(m, ""))])
+            };
 
-            foreach (string newMonitor in newMonitors)
-            {
-                monitorsNode[newMonitor] = "";
-            }
-
-            file.SetLength(0);
-
-            using var writer = new Utf8JsonWriter(file, new JsonWriterOptions()
-            {
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-                Indented = true
-            });
-
-            rootNode!.WriteTo(writer);
+            newSettings.Save();
         }
         catch (Exception ex)
         {

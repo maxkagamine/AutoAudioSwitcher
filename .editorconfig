@@ -151,3 +151,6 @@ csharp_style_var_elsewhere = true:silent
 csharp_style_var_for_built_in_types = false:silent
 csharp_style_var_when_type_is_apparent = true:silent
 csharp_using_directive_placement = outside_namespace:silent
+
+# WFO5001: Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+dotnet_diagnostic.WFO5001.severity = none
