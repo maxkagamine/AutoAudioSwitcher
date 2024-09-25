@@ -21,13 +21,23 @@ internal class CurrentMonitorMonitor
     private readonly ILogger logger;
     private readonly ConnectedMonitorsMonitor connectedMonitorsMonitor;
 
+    private readonly WINEVENTPROC winEventProc;
+
     public CurrentMonitorMonitor(ConnectedMonitorsMonitor connectedMonitorsMonitor, ILogger logger)
     {
         this.connectedMonitorsMonitor = connectedMonitorsMonitor;
         this.logger = logger.ForContext<CurrentMonitorMonitor>();
 
-        SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, null, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
-        SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+        // It's important to hold a reference to the delegate rather than directly pass the method (which compiles to an
+        // inline new(WinEventProc)), as it's being passed to unmanaged code as a function pointer and we don't want the
+        // garbage collector cleaning it up.
+        //
+        // This seems to have been the cause of an ExecutionEngineException (sometimes NullReferenceException) arising
+        // from Application.Run() and originating at the PeekMessage() in Application.ComponentManager.FPushMessageLoop.
+        winEventProc = new(WinEventProc);
+
+        SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+        SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
 
     public IObservable<Monitor> CurrentMonitorChanged => subject.DistinctUntilChanged(x => x.GdiDeviceName);
