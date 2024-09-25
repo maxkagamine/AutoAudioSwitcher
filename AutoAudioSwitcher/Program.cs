@@ -31,7 +31,7 @@ internal class Program
             LogEventLevel.Debug : LogEventLevel.Error;
 
         services.AddSingleton<ILogger>(_ => new LoggerConfiguration()
-            .MinimumLevel.Verbose()
+            .MinimumLevel.Debug()
             .WriteTo.Debug()
             .WriteTo.File("error.log",
                 levelSwitch: levelSwitch,

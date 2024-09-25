@@ -91,15 +91,18 @@ internal class CurrentMonitorMonitor
         }
 
         string gdiDisplayName = monitorInfo.szDevice.ToString();
-        var currentMonitors = connectedMonitorsMonitor.CurrentConnectedMonitors;
-        Monitor? monitor = currentMonitors.FirstOrDefault(m => m.GdiDeviceName == gdiDisplayName);
-        if (monitor is null)
+        Monitor[] currentMonitors = connectedMonitorsMonitor.CurrentConnectedMonitors;
+
+        for (int i = 0; i < currentMonitors.Length; i++) // Loop instead of FirstOrDefault() to avoid memory allocations for lambda
         {
-            logger.Error("GetMonitorInfo returned {Monitor}, but the current connected monitors are {@CurrentConnectedMonitors}",
-                gdiDisplayName, currentMonitors);
-            return;
+            if (currentMonitors[i].GdiDeviceName == gdiDisplayName)
+            {
+                subject.OnNext(currentMonitors[i]);
+                return;
+            }
         }
 
-        subject.OnNext(monitor);
+        logger.Error("GetMonitorInfo returned {Monitor}, but the current connected monitors are {@CurrentConnectedMonitors}",
+            gdiDisplayName, currentMonitors);
     }
 }

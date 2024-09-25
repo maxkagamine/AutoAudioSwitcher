@@ -22,7 +22,7 @@ internal class ConnectedMonitorsMonitor : NativeWindow
 {
     private const string UnknownMonitorName = "Unknown";
 
-    private readonly BehaviorSubject<IEnumerable<Monitor>> monitors;
+    private readonly BehaviorSubject<Monitor[]> monitors;
     private readonly ILogger logger;
 
     public ConnectedMonitorsMonitor(ILogger logger)
@@ -33,9 +33,9 @@ internal class ConnectedMonitorsMonitor : NativeWindow
         CreateHandle(new CreateParams());
     }
 
-    public IObservable<IEnumerable<Monitor>> ConnectedMonitors => monitors;
+    public IObservable<Monitor[]> ConnectedMonitors => monitors;
 
-    public IEnumerable<Monitor> CurrentConnectedMonitors => monitors.Value;
+    public Monitor[] CurrentConnectedMonitors => monitors.Value;
 
     private unsafe Monitor[] GetMonitors()
     {
