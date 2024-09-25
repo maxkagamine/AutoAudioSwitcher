@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
+using Serilog.Events;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,9 +17,9 @@ internal sealed record Settings : IEquatable<Settings?>
     public IReadOnlyDictionary<string, string> Monitors { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>
-    /// Whether to write debug messages to the error log.
+    /// Log level for the error log. Can be set to "Debug" to enable debug logging.
     /// </summary>
-    public bool EnableDebugLogging { get; init; }
+    public LogEventLevel LogLevel { get; init; } = LogEventLevel.Error;
 
     /// <summary>
     /// Writes the current <see cref="Settings"/> to appsettings.json.
@@ -34,17 +35,17 @@ internal sealed record Settings : IEquatable<Settings?>
         return other is not null &&
                Monitors.Count == other.Monitors.Count &&
                Monitors.All(x => other.Monitors.TryGetValue(x.Key, out var value) && value.Equals(x.Value)) &&
-               EnableDebugLogging == other.EnableDebugLogging;
+               LogLevel == other.LogLevel;
     }
 
     public override int GetHashCode()
     {
         return HashCode.Combine(
             Monitors.Count,
-            EnableDebugLogging);
+            LogLevel);
     }
 }
 
 [JsonSerializable(typeof(Settings))]
-[JsonSourceGenerationOptions(WriteIndented = true)]
+[JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
 internal partial class SettingsSerializerContext : JsonSerializerContext;

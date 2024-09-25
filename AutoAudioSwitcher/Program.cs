@@ -28,8 +28,7 @@ internal class Program
 
         services.ConfigureObservable<Settings>(config);
 
-        levelSwitch.MinimumLevel = config.GetValue<bool>(nameof(Settings.EnableDebugLogging)) ?
-            LogEventLevel.Debug : LogEventLevel.Error;
+        levelSwitch.MinimumLevel = config.GetValue<LogEventLevel>(nameof(Settings.LogLevel));
 
         services.AddSingleton<ILogger>(_ => new LoggerConfiguration()
             .MinimumLevel.Debug()
@@ -77,8 +76,7 @@ internal class Program
         var settings = provider.GetRequiredService<IBehaviorObservable<Settings>>();
         settings.Subscribe(currentSettings =>
         {
-            levelSwitch.MinimumLevel = currentSettings.EnableDebugLogging ?
-                LogEventLevel.Debug : LogEventLevel.Error;
+            levelSwitch.MinimumLevel = currentSettings.LogLevel;
 
             logger.Information("Loaded settings: {@Settings}", currentSettings);
         });
