@@ -6,10 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Unicode;
 
 namespace AutoAudioSwitcher;
 
@@ -132,34 +128,14 @@ internal class Program
 
             logger.Information("Adding new monitors to appsettings.json: {Monitors}", newMonitors);
 
-            using var file = File.Open("appsettings.json", FileMode.Open, FileAccess.ReadWrite);
-
-            JsonNode? rootNode = JsonNode.Parse(
-                file,
-                new JsonNodeOptions() { PropertyNameCaseInsensitive = true },
-                new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip });
-
-            JsonNode? monitorsNode = rootNode?[nameof(Settings.Monitors)];
-
-            if (monitorsNode is not JsonObject)
+            var newSettings = settings.Value with
             {
-                return;
-            }
+                Monitors = new Dictionary<string, string>([
+                    .. settings.Value.Monitors,
+                    .. newMonitors.Select(m => new KeyValuePair<string, string>(m, ""))])
+            };
 
-            foreach (string newMonitor in newMonitors)
-            {
-                monitorsNode[newMonitor] = "";
-            }
-
-            file.SetLength(0);
-
-            using var writer = new Utf8JsonWriter(file, new JsonWriterOptions()
-            {
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-                Indented = true
-            });
-
-            rootNode!.WriteTo(writer);
+            newSettings.Save();
         }
         catch (Exception ex)
         {

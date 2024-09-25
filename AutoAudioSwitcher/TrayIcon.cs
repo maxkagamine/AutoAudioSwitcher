@@ -15,6 +15,7 @@ internal class TrayIcon : IDisposable
     private readonly ILogger logger;
     private readonly NotifyIcon notifyIcon;
     private readonly IObservable<ContextMenuStrip> menu;
+    private readonly IBehaviorObservable<Settings> settings;
     private IDisposable? menuSubscription;
 
     public TrayIcon(
@@ -24,6 +25,7 @@ internal class TrayIcon : IDisposable
         ILogger logger)
     {
         this.logger = logger = logger.ForContext<TrayIcon>();
+        this.settings = settings;
 
         notifyIcon = new()
         {
@@ -48,6 +50,8 @@ internal class TrayIcon : IDisposable
             settings,
             (connectedMonitors, playbackDevices, settings) =>
             {
+                logger.Debug("Rebuilding tray menu");
+
                 ContextMenuStrip menu = new();
 
                 foreach (var monitorName in connectedMonitors.Select(m => m.FriendlyName).Order())
@@ -95,6 +99,16 @@ internal class TrayIcon : IDisposable
 
         logger.Debug("PlaybackDeviceMenuItem clicked: MonitorName = {MonitorName}, DeviceName = {DeviceName}",
             item.MonitorName, item.DeviceName);
+
+        var newSettings = settings.Value with
+        {
+            Monitors = new Dictionary<string, string>(settings.Value.Monitors)
+            {
+                [item.MonitorName] = item.DeviceName
+            }
+        };
+
+        newSettings.Save();
     }
 
     public void Dispose()

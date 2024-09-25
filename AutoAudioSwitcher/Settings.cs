@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0
 
 using System.Collections.ObjectModel;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AutoAudioSwitcher;
 
-internal class Settings : IEquatable<Settings?>
+internal sealed record Settings : IEquatable<Settings?>
 {
     /// <summary>
     /// Map of display names (as shown in the Settings app under "Advanced display settings" or similar) to playback
@@ -18,17 +20,31 @@ internal class Settings : IEquatable<Settings?>
     /// </summary>
     public bool EnableDebugLogging { get; init; }
 
-    public override bool Equals(object? obj) => Equals(obj as Settings);
+    /// <summary>
+    /// Writes the current <see cref="Settings"/> to appsettings.json.
+    /// </summary>
+    public void Save()
+    {
+        using FileStream file = File.Open("appsettings.json", FileMode.Create, FileAccess.Write);
+        JsonSerializer.Serialize(file, this, SettingsSerializerContext.Default.Options);
+    }
 
     public bool Equals(Settings? other)
     {
         return other is not null &&
                Monitors.Count == other.Monitors.Count &&
-               Monitors.All(x => other.Monitors.TryGetValue(x.Key, out var value) && value.Equals(x.Value));
+               Monitors.All(x => other.Monitors.TryGetValue(x.Key, out var value) && value.Equals(x.Value)) &&
+               EnableDebugLogging == other.EnableDebugLogging;
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(Monitors.Count);
+        return HashCode.Combine(
+            Monitors.Count,
+            EnableDebugLogging);
     }
 }
+
+[JsonSerializable(typeof(Settings))]
+[JsonSourceGenerationOptions(WriteIndented = true)]
+internal partial class SettingsSerializerContext : JsonSerializerContext;
