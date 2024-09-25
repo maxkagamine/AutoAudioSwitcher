@@ -37,16 +37,17 @@ internal class AudioDeviceManager : IDisposable
         var deviceStateChanged = Observable.FromEventPattern<DeviceStateChangedEventArgs>( // Active, disabled, unplugged
             handler => notificationClient.DeviceStateChanged += handler,
             handler => notificationClient.DeviceStateChanged -= handler)
-            .Do(e => logger.Debug("DeviceStateChanged: {DeviceId}", e.EventArgs.DeviceId))
+            .Do(e => logger.Debug("DeviceStateChanged ({State}): {DeviceId}", e.EventArgs.DeviceState, e.EventArgs.DeviceId))
             .Select(_ => Unit.Default);
 
-        var devicePropertyChanged = Observable.FromEventPattern<DevicePropertyChangedEventArgs>( // Device name, etc.
+        var deviceDescriptionChanged = Observable.FromEventPattern<DevicePropertyChangedEventArgs>( // Device name, etc.
             handler => notificationClient.DevicePropertyChanged += handler,
             handler => notificationClient.DevicePropertyChanged -= handler)
-            .Do(e => logger.Debug("DevicePropertyChanged: {DeviceId}", e.EventArgs.DeviceId))
+            .Where(e => e.EventArgs.PropertyKey == PKey.DeviceDescription)
+            .Do(e => logger.Debug("DevicePropertyChanged (DeviceDescription): {DeviceId}", e.EventArgs.DeviceId))
             .Select(_ => Unit.Default);
 
-        var playbackDevices = Observable.Merge(deviceAdded, deviceRemoved, deviceStateChanged, devicePropertyChanged)
+        var playbackDevices = Observable.Merge(deviceAdded, deviceRemoved, deviceStateChanged, deviceDescriptionChanged)
             .StartWith(Unit.Default)
             .Select(_ => EnumeratePlaybackDevices()
                 .Select(d => GetDeviceName(d))
