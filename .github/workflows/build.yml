@@ -1,0 +1,37 @@
+on:
+  release:
+    types: [ published ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          if ('${{ github.event_name }}' -eq 'release') {
+            $ver = '${{ github.event.release.tag_name }}'.TrimStart('v')
+          } else {
+            $ver = '0.0.0'
+          }
+          
+          dotnet.exe publish AutoAudioSwitcher -o publish -p:Version="$ver"
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' .\Setup\Setup.iss
+
+      - name: Upload release artifact
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.event.release.tag_name }} Setup\Output\AutoAudioSwitcher-Setup.exe
