@@ -19,12 +19,13 @@
 AppCopyright=Copyright (c) Max Kagamine
 AppId={{F09F929B-E98F-A1E9-9FB3-E383AAE383B3}
 AppName=Auto Audio Switcher
-AppVerName=Auto Audio Switcher {#Version}
 AppPublisher=Max Kagamine
 AppPublisherURL=https://github.com/maxkagamine/AutoAudioSwitcher
 AppSupportURL=https://github.com/maxkagamine/AutoAudioSwitcher/issues
 AppUpdatesURL=https://github.com/maxkagamine/AutoAudioSwitcher/releases
+AppVerName=Auto Audio Switcher {#Version}
 AppVersion={#Version}
+ArchitecturesInstallIn64BitMode=x64compatible
 DefaultDirName={userpf}\Auto Audio Switcher
 DisableDirPage=yes
 DisableProgramGroupPage=yes
