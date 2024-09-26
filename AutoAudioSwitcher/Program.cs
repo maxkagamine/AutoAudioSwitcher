@@ -51,7 +51,7 @@ internal class Program
     [STAThread]
     static void Main()
     {
-        using Mutex singleInstance = new(true, "392d8dc8-9bdc-4844-a7c8-dbf3e08bb2bc", out bool createdNew);
+        using Mutex singleInstance = new(true, "f09f929b-e98f-a1e9-9fb3-e383aae383b3" /* This is my favorite GUID */, out bool createdNew);
         if (!createdNew)
         {
             return;
