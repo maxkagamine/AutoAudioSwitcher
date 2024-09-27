@@ -87,11 +87,20 @@ internal class TrayIcon : IDisposable
             });
     }
 
+    public void Show()
+    {
+        subscriptions.Add(menu.Subscribe(menu =>
+        {
+            notifyIcon.ContextMenuStrip = menu;
+            notifyIcon.Visible = true;
+        }));
+    }
+
     private void UpdateIcon(Settings? settings = null)
     {
         settings ??= this.settings.Value;
 
-        notifyIcon.Icon = (Application.IsDarkModeEnabled, settings.Enabled) switch
+        notifyIcon.Icon = (IsSystemDarkModeEnabled(), settings.Enabled) switch
         {
             (true, true) => Resources.TrayIconLight,
             (true, false) => Resources.TrayIconLightDisabled,
@@ -100,13 +109,21 @@ internal class TrayIcon : IDisposable
         };
     }
 
-    public void Show()
+    private static bool IsSystemDarkModeEnabled()
     {
-        subscriptions.Add(menu.Subscribe(menu =>
+        // https://github.com/maxkagamine/AutoAudioSwitcher/issues/9
+        int? systemUsesLightTheme = null;
+
+        try
         {
-            notifyIcon.ContextMenuStrip = menu;
-            notifyIcon.Visible = true;
-        }));
+            systemUsesLightTheme = Registry.GetValue(
+                keyName: @"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+                valueName: "SystemUsesLightTheme",
+                defaultValue: 1) as int?;
+        }
+        catch { }
+
+        return systemUsesLightTheme == 0;
     }
 
     private void OnPlaybackDeviceMenuItemClicked(object? sender, EventArgs e)
