@@ -19,6 +19,9 @@ namespace AutoAudioSwitcher;
 /// </summary>
 internal class CurrentMonitorMonitor
 {
+    // Sometimes when plugging in a display, Windows will briefly steal focus to that display before switching back
+    private static readonly TimeSpan DebounceTimeout = TimeSpan.FromMilliseconds(50);
+
     private readonly Subject<Monitor> subject = new();
     private readonly ILogger logger;
     private readonly ConnectedMonitorsMonitor connectedMonitorsMonitor;
@@ -42,7 +45,10 @@ internal class CurrentMonitorMonitor
         SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
 
-    public IObservable<Monitor> CurrentMonitorChanged => subject.DistinctUntilChanged(x => x.GdiDeviceName);
+    public IObservable<Monitor> CurrentMonitorChanged => subject
+        .DistinctUntilChanged(x => x.GdiDeviceName)
+        .Throttle(DebounceTimeout)
+        .DistinctUntilChanged(x => x.GdiDeviceName);
 
     private unsafe void WinEventProc(HWINEVENTHOOK hWinEventHook, uint @event, HWND hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
     {
