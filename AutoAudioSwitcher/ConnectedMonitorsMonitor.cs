@@ -4,9 +4,11 @@
 using Serilog;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32.Devices.Display;
 using Windows.Win32.Foundation;
+using Windows.Win32.Graphics.Gdi;
 using static Windows.Win32.Devices.Display.DISPLAYCONFIG_DEVICE_INFO_TYPE;
 using static Windows.Win32.Devices.Display.QUERY_DISPLAY_CONFIG_FLAGS;
 using static Windows.Win32.Foundation.WIN32_ERROR;
@@ -127,9 +129,16 @@ internal class ConnectedMonitorsMonitor : NativeWindow
                     return [];
                 }
 
-                monitors.Add(new Monitor(
-                    sourceName.viewGdiDeviceName.ToString(),
-                    targetName.flags.Anonymous.Anonymous.friendlyNameFromEdid ? targetName.monitorFriendlyDeviceName.ToString() : UnknownMonitorName));
+                string gdiDeviceName = sourceName.viewGdiDeviceName.ToString();
+                string friendlyName = targetName.flags.Anonymous.Anonymous.friendlyNameFromEdid ?
+                    targetName.monitorFriendlyDeviceName.ToString() : "";
+
+                if (string.IsNullOrEmpty(friendlyName)) // Fallback in case monitor doesn't support EDID or its name is blank
+                {
+                    friendlyName = GetDeviceManagerName(gdiDeviceName);
+                }
+
+                monitors.Add(new Monitor(gdiDeviceName, friendlyName));
             }
 
             return [.. monitors];
@@ -139,6 +148,17 @@ internal class ConnectedMonitorsMonitor : NativeWindow
             logger.Error(ex, "Failed to get connected monitors");
             return [];
         }
+    }
+
+    private static string GetDeviceManagerName(string gdiDeviceName)
+    {
+        DISPLAY_DEVICEW displayDevice = new()
+        {
+            cb = (uint)Unsafe.SizeOf<DISPLAY_DEVICEW>()
+        };
+
+        EnumDisplayDevices(gdiDeviceName, 0, ref displayDevice, 0);
+        return displayDevice.DeviceString.ToString();
     }
 
     protected override void WndProc(ref Message m)
