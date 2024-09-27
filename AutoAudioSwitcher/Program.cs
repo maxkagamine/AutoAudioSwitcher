@@ -40,10 +40,11 @@ internal class Program
                 fileSizeLimitBytes: 10485760 /* 10 MiB */)
             .CreateLogger());
 
-        services.AddSingleton<CurrentMonitorMonitor>();
         services.AddSingleton<AudioDeviceManager>();
         services.AddSingleton<ConnectedMonitorsMonitor>();
+        services.AddSingleton<CurrentMonitorMonitor>();
         services.AddSingleton<TrayIcon>();
+        services.AddSingleton<WindowMessageListener>();
 
         return services.BuildServiceProvider();
     }
@@ -116,8 +117,8 @@ internal class Program
             }
         });
 
-        var trayIcon = provider.GetRequiredService<TrayIcon>();
-        trayIcon.Show();
+        provider.GetRequiredService<WindowMessageListener>();
+        provider.GetRequiredService<TrayIcon>().Show();
 
         Application.Run();
     }

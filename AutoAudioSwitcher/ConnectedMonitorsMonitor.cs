@@ -17,22 +17,23 @@ using static Windows.Win32.PInvoke;
 namespace AutoAudioSwitcher;
 
 /// <summary>
-/// Enumerates and observes connected monitors. One might say it monitors them. The monitors, that is. This creates a
-/// hidden window to listen for window messages to detect monitors being connected and disconnected.
+/// Enumerates and observes connected monitors.
 /// </summary>
-internal class ConnectedMonitorsMonitor : NativeWindow
+internal class ConnectedMonitorsMonitor : IDisposable
 {
-    private const string UnknownMonitorName = "Unknown";
-
     private readonly BehaviorSubject<Monitor[]> monitors;
     private readonly ILogger logger;
+    private readonly IDisposable displayChangeSubscription;
 
-    public ConnectedMonitorsMonitor(ILogger logger)
+    public ConnectedMonitorsMonitor(ILogger logger, WindowMessageListener wndProc)
     {
         this.logger = logger.ForContext<ConnectedMonitorsMonitor>();
         monitors = new(GetMonitors());
 
-        CreateHandle(new CreateParams());
+        displayChangeSubscription = wndProc.DisplayChange
+            .Select(_ => GetMonitors())
+            .Where(m => !m.SequenceEqual(monitors.Value))
+            .Subscribe(monitors);
     }
 
     /// <summary>
@@ -161,19 +162,8 @@ internal class ConnectedMonitorsMonitor : NativeWindow
         return displayDevice.DeviceString.ToString();
     }
 
-    protected override void WndProc(ref Message m)
+    public void Dispose()
     {
-        if (m.Msg == WM_DISPLAYCHANGE)
-        {
-            logger.Debug("WM_DISPLAYCHANGE");
-
-            Monitor[] newMonitors = GetMonitors();
-            if (!newMonitors.SequenceEqual(CurrentConnectedMonitors))
-            {
-                monitors.OnNext(newMonitors);
-            }
-        }
-
-        base.WndProc(ref m);
+        displayChangeSubscription.Dispose();
     }
 }
