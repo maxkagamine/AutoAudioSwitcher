@@ -10,10 +10,7 @@
 
 ## インストール
 
-1. [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/ja-jp/download/dotnet/9.0)をインストール
-2. [最新リリース](https://github.com/maxkagamine/AutoAudioSwitcher/releases/latest)をダウンロードして解凍
-   - Program Filesにはインストールしないで。アプリは設定を保存したり、エラーを記録するためにインストールディレクトリへの書き込み許可が必要だから。
-3. スタートアップにショートカットを置いて (Win+R「shell:startup」)
+[**AutoAudioSwitcher-Setup.exeをダウンロード**](https://github.com/maxkagamine/AutoAudioSwitcher/releases/latest/download/AutoAudioSwitcher-Setup.exe)
 
 ## 使用上のメモ
 
