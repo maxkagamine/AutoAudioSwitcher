@@ -48,4 +48,10 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- Invoked by publish profile -->
+  <Target Name="Install" AfterTargets="Publish" Condition="'$(Install)' == 'true'">
+    <Exec Command="&quot;C:\Program Files (x86)\Inno Setup 6\ISCC.exe&quot; ..\Setup\Setup.iss" />
+    <Exec Command="..\Setup\Output\AutoAudioSwitcher-Setup.exe" />
+  </Target>
+
 </Project>
