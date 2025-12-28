@@ -1,4 +1,4 @@
-﻿// Copyright (c) Max Kagamine
+// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
 using AutoAudioSwitcher.Properties;
@@ -9,7 +9,7 @@ using System.Reactive.Linq;
 
 namespace AutoAudioSwitcher;
 
-internal class TrayIcon : IDisposable
+internal sealed class TrayIcon : IDisposable
 {
     private readonly ILogger logger;
     private readonly NotifyIcon notifyIcon;
@@ -162,7 +162,7 @@ internal class TrayIcon : IDisposable
         notifyIcon.Dispose();
     }
 
-    private class PlaybackDeviceMenuItem : ToolStripMenuItem
+    private sealed class PlaybackDeviceMenuItem : ToolStripMenuItem
     {
         public PlaybackDeviceMenuItem(
             TrayIcon trayIcon,

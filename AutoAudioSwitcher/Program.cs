@@ -9,11 +9,11 @@ using Serilog.Events;
 
 namespace AutoAudioSwitcher;
 
-internal class Program
+internal sealed class Program
 {
     private static readonly LoggingLevelSwitch levelSwitch = new(LogEventLevel.Error);
 
-    static ServiceProvider ConfigureServices()
+    private static ServiceProvider ConfigureServices()
     {
         ServiceCollection services = new();
 
@@ -50,7 +50,7 @@ internal class Program
     }
 
     [STAThread]
-    static void Main()
+    public static void Main()
     {
         using Mutex singleInstance = new(true, "f09f929b-e98f-a1e9-9fb3-e383aae383b3" /* This is my favorite GUID */, out bool createdNew);
         if (!createdNew)
@@ -123,7 +123,7 @@ internal class Program
         Application.Run();
     }
 
-    static void AddNewMonitorsToSettings(
+    private static void AddNewMonitorsToSettings(
         IBehaviorObservable<Settings> settings, IEnumerable<Monitor> currentMonitors, ILogger logger)
     {
         try

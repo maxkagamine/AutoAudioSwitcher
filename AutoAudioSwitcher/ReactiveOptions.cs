@@ -1,4 +1,4 @@
-﻿// Copyright (c) Max Kagamine
+// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
 using Microsoft.Extensions.Configuration;
@@ -35,7 +35,7 @@ internal static class ReactiveOptionsExtensions
 /// <summary>
 /// An <see cref="IObservable{T}"/> alternative to the familiar options pattern.
 /// </summary>
-internal class ReactiveOptions<T> : IBehaviorObservable<T>, IDisposable where T : new()
+internal sealed class ReactiveOptions<T> : IBehaviorObservable<T>, IDisposable where T : new()
 {
     private readonly IConfiguration config;
     private readonly Action<BinderOptions>? configureOptions;
@@ -69,5 +69,6 @@ internal class ReactiveOptions<T> : IBehaviorObservable<T>, IDisposable where T 
     public void Dispose()
     {
         changeTokenSubscription.Dispose();
+        subject.Dispose();
     }
 }

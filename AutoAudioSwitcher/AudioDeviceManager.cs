@@ -1,4 +1,4 @@
-﻿// Copyright (c) Max Kagamine
+// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
 using CoreAudio;
@@ -8,7 +8,7 @@ using System.Reactive.Linq;
 
 namespace AutoAudioSwitcher;
 
-internal class AudioDeviceManager : IDisposable
+internal sealed class AudioDeviceManager : IDisposable
 {
     private readonly MMDeviceEnumerator deviceEnumerator;
     private readonly MMNotificationClient notificationClient;

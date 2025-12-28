@@ -1,4 +1,4 @@
-﻿// Copyright (c) Max Kagamine
+// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
 using Serilog;
@@ -8,7 +8,7 @@ using static Windows.Win32.PInvoke;
 
 namespace AutoAudioSwitcher;
 
-internal class WindowMessageListener : NativeWindow
+internal sealed class WindowMessageListener : NativeWindow, IDisposable
 {
     private readonly Subject<Unit> displayChange = new();
     private readonly ILogger logger;
@@ -51,5 +51,11 @@ internal class WindowMessageListener : NativeWindow
         }
 
         base.WndProc(ref m);
+    }
+
+    public void Dispose()
+    {
+        ReleaseHandle();
+        displayChange.Dispose();
     }
 }

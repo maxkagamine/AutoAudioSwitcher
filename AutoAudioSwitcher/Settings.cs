@@ -1,4 +1,4 @@
-﻿// Copyright (c) Max Kagamine
+// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
 using Serilog.Events;
@@ -39,7 +39,7 @@ internal sealed record Settings : IEquatable<Settings?>
     {
         return other is not null &&
                Monitors.Count == other.Monitors.Count &&
-               Monitors.All(x => other.Monitors.TryGetValue(x.Key, out var value) && value.Equals(x.Value)) &&
+               Monitors.All(x => other.Monitors.TryGetValue(x.Key, out var value) && value.Equals(x.Value, StringComparison.Ordinal)) &&
                Enabled == other.Enabled &&
                LogLevel == other.LogLevel;
     }
@@ -55,4 +55,4 @@ internal sealed record Settings : IEquatable<Settings?>
 
 [JsonSerializable(typeof(Settings))]
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
-internal partial class SettingsSerializerContext : JsonSerializerContext;
+internal sealed partial class SettingsSerializerContext : JsonSerializerContext;

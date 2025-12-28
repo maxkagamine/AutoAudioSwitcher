@@ -1,4 +1,4 @@
-﻿// Copyright (c) Max Kagamine
+// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
 using Serilog;
@@ -19,7 +19,7 @@ namespace AutoAudioSwitcher;
 /// <summary>
 /// Enumerates and observes connected monitors.
 /// </summary>
-internal class ConnectedMonitorsMonitor : IDisposable
+internal sealed class ConnectedMonitorsMonitor : IDisposable
 {
     private readonly BehaviorSubject<Monitor[]> monitors;
     private readonly ILogger logger;
@@ -74,7 +74,7 @@ internal class ConnectedMonitorsMonitor : IDisposable
                 fixed (DISPLAYCONFIG_PATH_INFO* pathsPtr = &paths[0])
                 fixed (DISPLAYCONFIG_MODE_INFO* modesPtr = &modes[0])
                 {
-                    result = QueryDisplayConfig(flags, ref pathCount, pathsPtr, ref modeCount, modesPtr, (DISPLAYCONFIG_TOPOLOGY_ID*)0);
+                    result = QueryDisplayConfig(flags, &pathCount, pathsPtr, &modeCount, modesPtr, (DISPLAYCONFIG_TOPOLOGY_ID*)0);
                 }
 
                 paths = paths[..(int)pathCount];
@@ -165,5 +165,6 @@ internal class ConnectedMonitorsMonitor : IDisposable
     public void Dispose()
     {
         displayChangeSubscription.Dispose();
+        monitors.Dispose();
     }
 }

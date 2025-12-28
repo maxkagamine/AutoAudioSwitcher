@@ -1,10 +1,12 @@
-﻿// Copyright (c) Max Kagamine
+// Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
 using Serilog;
+using System.Globalization;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.InteropServices;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.Accessibility;
@@ -17,7 +19,7 @@ namespace AutoAudioSwitcher;
 /// <summary>
 /// Monitors the current monitor.
 /// </summary>
-internal class CurrentMonitorMonitor
+internal sealed class CurrentMonitorMonitor : IDisposable
 {
     // Sometimes when plugging in a display, Windows will briefly steal focus to that display before switching back
     private static readonly TimeSpan DebounceTimeout = TimeSpan.FromMilliseconds(50);
@@ -27,6 +29,10 @@ internal class CurrentMonitorMonitor
     private readonly ConnectedMonitorsMonitor connectedMonitorsMonitor;
 
     private readonly WINEVENTPROC winEventProc;
+
+    private readonly UnhookWinEventSafeHandle systemForegroundHook;
+    private readonly UnhookWinEventSafeHandle objectLocationChangeHook;
+    private bool isDisposed;
 
     public CurrentMonitorMonitor(ConnectedMonitorsMonitor connectedMonitorsMonitor, ILogger logger)
     {
@@ -41,8 +47,8 @@ internal class CurrentMonitorMonitor
         // from Application.Run() and originating at the PeekMessage() in Application.ComponentManager.FPushMessageLoop.
         winEventProc = new(WinEventProc);
 
-        SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
-        SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+        systemForegroundHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+        objectLocationChangeHook = SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
 
     public IObservable<Monitor> CurrentMonitorChanged => subject
@@ -63,7 +69,7 @@ internal class CurrentMonitorMonitor
             {
                 EVENT_SYSTEM_FOREGROUND => nameof(EVENT_SYSTEM_FOREGROUND),
                 EVENT_OBJECT_LOCATIONCHANGE => nameof(EVENT_OBJECT_LOCATIONCHANGE),
-                _ => @event.ToString()
+                _ => @event.ToString(CultureInfo.InvariantCulture)
             },
             hwnd, (OBJECT_IDENTIFIER)idObject, idChild);
 
@@ -110,5 +116,32 @@ internal class CurrentMonitorMonitor
 
         logger.Error("GetMonitorInfo returned {Monitor}, but the current connected monitors are {@CurrentConnectedMonitors}",
             gdiDisplayName, currentMonitors);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!isDisposed)
+        {
+            isDisposed = true;
+
+            systemForegroundHook.Dispose();
+            objectLocationChangeHook.Dispose();
+
+            if (disposing)
+            {
+                subject.Dispose();
+            }
+        }
+    }
+
+    ~CurrentMonitorMonitor()
+    {
+        Dispose(disposing: false);
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }
