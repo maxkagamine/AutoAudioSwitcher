@@ -100,30 +100,13 @@ internal sealed class TrayIcon : IDisposable
     {
         settings ??= this.settings.Value;
 
-        notifyIcon.Icon = (IsSystemDarkModeEnabled(), settings.Enabled) switch
+        notifyIcon.Icon = (Program.IsSystemDarkModeEnabled(), settings.Enabled) switch
         {
             (true, true) => Resources.TrayIconLight,
             (true, false) => Resources.TrayIconLightDisabled,
             (false, true) => Resources.TrayIconDark,
             (false, false) => Resources.TrayIconDarkDisabled
         };
-    }
-
-    private static bool IsSystemDarkModeEnabled()
-    {
-        // https://github.com/maxkagamine/AutoAudioSwitcher/issues/9
-        int? systemUsesLightTheme = null;
-
-        try
-        {
-            systemUsesLightTheme = Registry.GetValue(
-                keyName: @"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-                valueName: "SystemUsesLightTheme",
-                defaultValue: 1) as int?;
-        }
-        catch { }
-
-        return systemUsesLightTheme == 0;
     }
 
     private void OnPlaybackDeviceMenuItemClicked(object? sender, EventArgs e)

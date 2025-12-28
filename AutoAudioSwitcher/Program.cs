@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -61,7 +62,16 @@ internal sealed class Program
         //CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = new("ja-JP");
 
         ApplicationConfiguration.Initialize();
-        Application.SetColorMode(SystemColorMode.System);
+
+        // Automatic dark mode is restricted to Win11+ for no good reason. It uses the "AppsUseLightTheme" setting
+        // rather than "SystemUsesLightTheme" anyway, so to be consistent with the taskbar and system icons' context
+        // menus, we'll manage it ourselves instead.
+        Application.SetColorMode(IsSystemDarkModeEnabled() ? SystemColorMode.Dark : SystemColorMode.Classic);
+        SystemEvents.UserPreferenceChanged += (_, _) =>
+        {
+            Application.SetColorMode(IsSystemDarkModeEnabled() ? SystemColorMode.Dark : SystemColorMode.Classic);
+        };
+
         Environment.CurrentDirectory = AppContext.BaseDirectory;
         ServiceProvider provider = ConfigureServices();
 
@@ -154,5 +164,22 @@ internal sealed class Program
         {
             logger.Error(ex, "Failed to add new monitors to appsettings.json");
         }
+    }
+
+    public static bool IsSystemDarkModeEnabled()
+    {
+        // https://github.com/maxkagamine/AutoAudioSwitcher/issues/9
+        int? systemUsesLightTheme = null;
+
+        try
+        {
+            systemUsesLightTheme = Registry.GetValue(
+                keyName: @"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+                valueName: "SystemUsesLightTheme",
+                defaultValue: 1) as int?;
+        }
+        catch { }
+
+        return systemUsesLightTheme == 0;
     }
 }
