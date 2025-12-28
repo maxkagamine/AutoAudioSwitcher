@@ -113,7 +113,7 @@ internal sealed class TrayIcon : IDisposable
     {
         var item = (PlaybackDeviceMenuItem)sender!;
 
-        logger.Debug("Setting playback device for {MonitorName} to {DeviceName}",
+        logger.Debug("Setting playback device for \"{MonitorName}\" to \"{DeviceName}\"",
             item.MonitorName, item.DeviceName);
 
         var newSettings = settings.Value with

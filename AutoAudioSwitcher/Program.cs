@@ -7,6 +7,7 @@ using Microsoft.Win32;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using Serilog.Templates;
 
 namespace AutoAudioSwitcher;
 
@@ -34,7 +35,10 @@ internal sealed class Program
         services.AddSingleton<ILogger>(_ => new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.Debug()
-            .WriteTo.File("error.log",
+            .WriteTo.File(
+                path: "error.log",
+                formatter: new ExpressionTemplate(
+                    "{@t:yyyy-MM-dd HH:mm:ss.fff zzz} [{@l:u3}] {#if SourceContext is not null}[{Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1)}] {#end}{@m}\n{@x}"),
                 levelSwitch: levelSwitch,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 5,
@@ -76,6 +80,8 @@ internal sealed class Program
         ServiceProvider provider = ConfigureServices();
 
         var logger = provider.GetRequiredService<ILogger>();
+        logger.Information("Application is starting.");
+
         AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
         {
             logger.Fatal((Exception)e.ExceptionObject, "Unhandled exception.");
@@ -114,7 +120,7 @@ internal sealed class Program
                 return;
             }
 
-            logger.Information("Current monitor is {CurrentMonitor}", currentMonitor.FriendlyName);
+            logger.Information("Current monitor is \"{CurrentMonitor}\"", currentMonitor.FriendlyName);
 
             if (settings.Value.Monitors.TryGetValue(currentMonitor.FriendlyName, out string? playbackDevice) &&
                 !string.IsNullOrEmpty(playbackDevice))
@@ -123,7 +129,7 @@ internal sealed class Program
             }
             else
             {
-                logger.Information("No playback device set for {CurrentMonitor}", currentMonitor.FriendlyName);
+                logger.Information("No playback device set for \"{CurrentMonitor}\"", currentMonitor.FriendlyName);
             }
         });
 

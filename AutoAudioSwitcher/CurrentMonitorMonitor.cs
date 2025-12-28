@@ -114,7 +114,7 @@ internal sealed class CurrentMonitorMonitor : IDisposable
             }
         }
 
-        logger.Error("GetMonitorInfo returned {Monitor}, but the current connected monitors are {@CurrentConnectedMonitors}",
+        logger.Error("GetMonitorInfo returned \"{Monitor}\", but the current connected monitors are {@CurrentConnectedMonitors}",
             gdiDisplayName, currentMonitors);
     }
 

@@ -3,6 +3,7 @@
 
 using CoreAudio;
 using Serilog;
+using Serilog.Events;
 using System.Reactive;
 using System.Reactive.Linq;
 
@@ -25,26 +26,26 @@ internal sealed class AudioDeviceManager : IDisposable
         var deviceAdded = Observable.FromEventPattern<DeviceNotificationEventArgs>(
             handler => notificationClient.DeviceAdded += handler,
             handler => notificationClient.DeviceAdded -= handler)
-            .Do(e => logger.Debug("DeviceAdded: {DeviceId}", e.EventArgs.DeviceId))
+            .Do(e => LogDeviceEvent("DeviceAdded", e.EventArgs))
             .Select(_ => Unit.Default);
 
         var deviceRemoved = Observable.FromEventPattern<DeviceNotificationEventArgs>(
             handler => notificationClient.DeviceRemoved += handler,
             handler => notificationClient.DeviceRemoved -= handler)
-            .Do(e => logger.Debug("DeviceRemoved: {DeviceId}", e.EventArgs.DeviceId))
+            .Do(e => LogDeviceEvent("DeviceRemoved", e.EventArgs))
             .Select(_ => Unit.Default);
 
         var deviceStateChanged = Observable.FromEventPattern<DeviceStateChangedEventArgs>( // Active, disabled, unplugged
             handler => notificationClient.DeviceStateChanged += handler,
             handler => notificationClient.DeviceStateChanged -= handler)
-            .Do(e => logger.Debug("DeviceStateChanged ({State}): {DeviceId}", e.EventArgs.DeviceState, e.EventArgs.DeviceId))
+            .Do(e => LogDeviceEvent($"DeviceStateChanged ({e.EventArgs.DeviceState})", e.EventArgs))
             .Select(_ => Unit.Default);
 
         var deviceDescriptionChanged = Observable.FromEventPattern<DevicePropertyChangedEventArgs>( // Device name, etc.
             handler => notificationClient.DevicePropertyChanged += handler,
             handler => notificationClient.DevicePropertyChanged -= handler)
             .Where(e => e.EventArgs.PropertyKey == PKey.DeviceDescription)
-            .Do(e => logger.Debug("DevicePropertyChanged (DeviceDescription): {DeviceId}", e.EventArgs.DeviceId))
+            .Do(e => LogDeviceEvent("DevicePropertyChanged (DeviceDescription)", e.EventArgs))
             .Select(_ => Unit.Default);
 
         var playbackDevices = Observable.Merge(deviceAdded, deviceRemoved, deviceStateChanged, deviceDescriptionChanged)
@@ -76,11 +77,11 @@ internal sealed class AudioDeviceManager : IDisposable
 
             if (device is null)
             {
-                logger.Error("No device with name {Name}.", name);
+                logger.Error("No device with name \"{Name}\".", name);
                 return;
             }
 
-            logger.Information("Switching to {Name}", name);
+            logger.Information("Switching to \"{Name}\"", name);
             device.Selected = true;
         }
         catch (Exception ex)
@@ -94,6 +95,15 @@ internal sealed class AudioDeviceManager : IDisposable
 
     private static string GetDeviceName(MMDevice device) =>
         device.Properties?[PKey.DeviceDescription]?.Value.ToString() ?? "<Unknown>";
+
+    private void LogDeviceEvent(string eventName, DeviceNotificationEventArgs e)
+    {
+        if (logger.IsEnabled(LogEventLevel.Debug))
+        {
+            logger.Debug("{Event}: \"{Device}\"",
+                eventName, e.TryGetDevice(out MMDevice? device) ? GetDeviceName(device!) : "<Unknown>");
+        }
+    }
 
     public void Dispose()
     {
