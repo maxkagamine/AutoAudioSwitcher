@@ -36,7 +36,7 @@ ShowLanguageDialog=auto
 SolidCompression=yes
 VersionInfoProductTextVersion={#ProductVersion}
 VersionInfoVersion={#FileVersion}
-WizardStyle=classic
+WizardStyle=classic dynamic
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
