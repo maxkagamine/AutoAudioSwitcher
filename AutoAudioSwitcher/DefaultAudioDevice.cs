@@ -3,6 +3,9 @@
 
 namespace AutoAudioSwitcher;
 
+/// <summary>
+/// Represents the name of the default audio device (or devices) for multimedia and communications.
+/// </summary>
 internal sealed record DefaultAudioDevice(string Multimedia, string Communications) : IEquatable<string>
 {
     public bool Equals(string? device) => device is not null && Multimedia == device && Communications == device;

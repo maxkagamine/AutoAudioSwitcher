@@ -6,7 +6,9 @@ using Serilog;
 using Serilog.Events;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 
 namespace AutoAudioSwitcher;
 
@@ -14,7 +16,8 @@ internal sealed class AudioDeviceManager : IDisposable
 {
     private readonly MMDeviceEnumerator deviceEnumerator;
     private readonly MMNotificationClient notificationClient;
-    private readonly CompositeDisposable disposables = [];
+    private readonly BehaviorSubject<DefaultAudioDevice> defaultPlaybackDevice;
+    private readonly CompositeDisposable subscriptions = [];
     private readonly ILogger logger;
 
     public AudioDeviceManager(ILogger logger)
@@ -61,32 +64,30 @@ internal sealed class AudioDeviceManager : IDisposable
             .Do(devices => logger.Information("Playback devices: {Devices}", devices))
             .Replay(1);
 
+        playbackDevices.Connect().DisposeWith(subscriptions);
+        PlaybackDevices = playbackDevices;
+
         // There is also a "Console" role for system sounds and (oddly) games that's distinct from Multimedia, but it's
         // not exposed in the Windows UI, and in fact when you change one the OS automatically sets the other.
         var initialDefaultMultimediaDevice = GetDeviceName(deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia));
         var initialDefaultCommunicationsDevice = GetDeviceName(deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Communications));
 
-        var defaultPlaybackDevice = Observable.FromEventPattern<DefaultDeviceChangedEventArgs>(
+        defaultPlaybackDevice = new(new(initialDefaultMultimediaDevice, initialDefaultCommunicationsDevice));
+
+        Observable.FromEventPattern<DefaultDeviceChangedEventArgs>(
             handler => notificationClient.DefaultDeviceChanged += handler,
             handler => notificationClient.DefaultDeviceChanged -= handler)
             .Where(e => e.EventArgs.DataFlow is DataFlow.Render &&
                         e.EventArgs.Role is Role.Multimedia or Role.Communications)
-            .Do(e => LogDeviceEvent($"DefaultDeviceChanged ({e.EventArgs.Role})", e.EventArgs))
-            .Scan(new DefaultAudioDevice(initialDefaultMultimediaDevice, initialDefaultCommunicationsDevice),
-                (DefaultAudioDevice d, EventPattern<DefaultDeviceChangedEventArgs> e) =>
-                    e.EventArgs.Role is Role.Multimedia ?
-                        d with { Multimedia = GetDeviceName(e.EventArgs) } :
-                        d with { Communications = GetDeviceName(e.EventArgs) })
+            .Scan(defaultPlaybackDevice.Value, (DefaultAudioDevice d, EventPattern<DefaultDeviceChangedEventArgs> e) =>
+                e.EventArgs.Role is Role.Multimedia ?
+                    d with { Multimedia = GetDeviceName(e.EventArgs) } :
+                    d with { Communications = GetDeviceName(e.EventArgs) })
             .Throttle(TimeSpan.FromMilliseconds(20))
             .DistinctUntilChanged()
-            .Do(d => logger.Information("Default playback device: {DefaultDevices}", d))
-            .Replay(1);
-
-        disposables.Add(playbackDevices.Connect());
-        disposables.Add(defaultPlaybackDevice.Connect());
-
-        PlaybackDevices = playbackDevices;
-        DefaultPlaybackDevice = defaultPlaybackDevice;
+            .Do(d => logger.Information("Default playback device changed to {DefaultDevice}", d))
+            .Subscribe(defaultPlaybackDevice)
+            .DisposeWith(subscriptions);
     }
 
     /// <summary>
@@ -98,17 +99,28 @@ internal sealed class AudioDeviceManager : IDisposable
     /// The names of the default multimedia and communications playback devices. Observers will receive the latest value
     /// immediately.
     /// </summary>
-    public IObservable<DefaultAudioDevice> DefaultPlaybackDevice { get; }
+    public IObservable<DefaultAudioDevice> DefaultPlaybackDevice => defaultPlaybackDevice;
+
+    /// <summary>
+    /// The names of the default multimedia and communications playback devices.
+    /// </summary>
+    public DefaultAudioDevice CurrentDefaultPlaybackDevice => defaultPlaybackDevice.Value;
 
     public void SetDefaultPlaybackDevice(string name)
     {
         try
         {
+            if (CurrentDefaultPlaybackDevice == name)
+            {
+                logger.Information("Default playback device is already \"{Name}\"", name);
+                return;
+            }
+
             MMDevice? device = EnumeratePlaybackDevices().FirstOrDefault(d => GetDeviceName(d) == name);
 
             if (device is null)
             {
-                logger.Error("No device with name \"{Name}\".", name);
+                logger.Error("No device with name \"{Name}\"", name);
                 return;
             }
 
@@ -140,6 +152,7 @@ internal sealed class AudioDeviceManager : IDisposable
 
     public void Dispose()
     {
-        disposables.Dispose();
+        subscriptions.Dispose();
+        defaultPlaybackDevice.Dispose();
     }
 }

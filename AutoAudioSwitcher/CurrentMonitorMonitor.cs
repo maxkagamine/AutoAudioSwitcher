@@ -24,7 +24,7 @@ internal sealed class CurrentMonitorMonitor : IDisposable
     // Sometimes when plugging in a display, Windows will briefly steal focus to that display before switching back
     private static readonly TimeSpan DebounceTimeout = TimeSpan.FromMilliseconds(50);
 
-    private readonly Subject<Monitor> subject = new();
+    private readonly BehaviorSubject<Monitor?> subject;
     private readonly ILogger logger;
     private readonly ConnectedMonitorsMonitor connectedMonitorsMonitor;
 
@@ -39,6 +39,8 @@ internal sealed class CurrentMonitorMonitor : IDisposable
         this.connectedMonitorsMonitor = connectedMonitorsMonitor;
         this.logger = logger.ForContext<CurrentMonitorMonitor>();
 
+        subject = new(GetCurrentMonitor());
+
         // It's important to hold a reference to the delegate rather than directly pass the method (which compiles to an
         // inline new(WinEventProc)), as it's being passed to unmanaged code as a function pointer and we don't want the
         // garbage collector cleaning it up.
@@ -51,12 +53,22 @@ internal sealed class CurrentMonitorMonitor : IDisposable
         objectLocationChangeHook = SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE, null, winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
     }
 
-    public IObservable<Monitor> CurrentMonitorChanged => subject
-        .DistinctUntilChanged(x => x.GdiDeviceName)
+    /// <summary>
+    /// The current monitor. Observers will receive the latest value immediately once the current monitor has been
+    /// established.
+    /// </summary>
+    public IObservable<Monitor> CurrentMonitor => subject
+        .Where(x => x is not null)
+        .DistinctUntilChanged(x => x!.GdiDeviceName)
         .Throttle(DebounceTimeout)
-        .DistinctUntilChanged(x => x.GdiDeviceName);
+        .DistinctUntilChanged(x => x!.GdiDeviceName)!;
 
-    private unsafe void WinEventProc(HWINEVENTHOOK hWinEventHook, uint @event, HWND hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
+    /// <summary>
+    /// The current... current monitor.
+    /// </summary>
+    public Monitor? CurrentCurrentMonitor => subject.Value;
+
+    private void WinEventProc(HWINEVENTHOOK hWinEventHook, uint @event, HWND hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
     {
         if (idObject != (int)OBJID_WINDOW)
         {
@@ -73,19 +85,27 @@ internal sealed class CurrentMonitorMonitor : IDisposable
             },
             hwnd, (OBJECT_IDENTIFIER)idObject, idChild);
 
+        if (GetCurrentMonitor() is Monitor monitor)
+        {
+            subject.OnNext(monitor);
+        }
+    }
+
+    private unsafe Monitor? GetCurrentMonitor()
+    {
         HWND foregroundWindow = GetForegroundWindow();
         if (foregroundWindow.IsNull)
         {
             // According to the docs, "the foreground window can be null in certain circumstances, such as when a window
             // is losing activation."
-            return;
+            return null;
         }
 
         HMONITOR monitorHandle = MonitorFromWindow(foregroundWindow, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONULL);
         if (monitorHandle == 0)
         {
             // This can happen if "the window does not intersect a display monitor" for whatever reason.
-            return;
+            return null;
         }
 
         MONITORINFOEXW monitorInfo = new()
@@ -99,7 +119,7 @@ internal sealed class CurrentMonitorMonitor : IDisposable
         if (!GetMonitorInfo(monitorHandle, (MONITORINFO*)&monitorInfo))
         {
             logger.Error("GetMonitorInfo failed: {Message}", Marshal.GetLastPInvokeErrorMessage());
-            return;
+            return null;
         }
 
         string gdiDisplayName = monitorInfo.szDevice.ToString();
@@ -109,13 +129,14 @@ internal sealed class CurrentMonitorMonitor : IDisposable
         {
             if (currentMonitors[i].GdiDeviceName == gdiDisplayName)
             {
-                subject.OnNext(currentMonitors[i]);
-                return;
+                return currentMonitors[i];
             }
         }
 
         logger.Error("GetMonitorInfo returned \"{Monitor}\", but the current connected monitors are {@CurrentConnectedMonitors}",
             gdiDisplayName, currentMonitors);
+
+        return null;
     }
 
     private void Dispose(bool disposing)

@@ -8,11 +8,14 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Templates;
+using System.Reactive;
+using System.Reactive.Linq;
 
 namespace AutoAudioSwitcher;
 
 internal sealed class Program
 {
+    private static readonly TimeSpan WindowsAutomaticDefaultDeviceChangeThreshold = TimeSpan.FromSeconds(2);
     private static readonly LoggingLevelSwitch levelSwitch = new(LogEventLevel.Error);
 
     private static ServiceProvider ConfigureServices()
@@ -105,33 +108,46 @@ internal sealed class Program
         var connectedMonitorsMonitor = provider.GetRequiredService<ConnectedMonitorsMonitor>();
         connectedMonitorsMonitor.ConnectedMonitors.Subscribe(currentMonitors =>
         {
-            logger.Information("Connected monitors: {Monitors}",
-                currentMonitors.Select(m => $"{m.GdiDeviceName}: {m.FriendlyName}"));
+            logger.Information("Connected monitors: {Monitors}", currentMonitors.Select(m => m.FriendlyName));
 
             AddNewMonitorsToSettings(settings, currentMonitors, logger);
         });
 
         var currentMonitorMonitor = provider.GetRequiredService<CurrentMonitorMonitor>();
         var audioDeviceManager = provider.GetRequiredService<AudioDeviceManager>();
-        currentMonitorMonitor.CurrentMonitorChanged.Subscribe(currentMonitor =>
-        {
-            if (!settings.Value.Enabled)
-            {
-                return;
-            }
 
-            logger.Information("Current monitor is \"{CurrentMonitor}\"", currentMonitor.FriendlyName);
+        // See https://github.com/maxkagamine/AutoAudioSwitcher/issues/11
+        IObservable<Monitor> currentMonitorWhenWindowsChangesDefaultDeviceAutomatically =
+            audioDeviceManager.PlaybackDevices.Skip(1)
+                .Join(
+                    right: audioDeviceManager.DefaultPlaybackDevice.Skip(1),
+                    leftDurationSelector: _ => Observable.Timer(WindowsAutomaticDefaultDeviceChangeThreshold),
+                    rightDurationSelector: _ => Observable.Empty<Unit>(),
+                    resultSelector: (_, _) => currentMonitorMonitor.CurrentCurrentMonitor /* lol */)
+                .Where(x => x is not null && settings.Value.Enabled)
+                .Do(_ => logger.Information("Detected Windows automatically changing the default audio device. Rechecking the current monitor..."))!;
 
-            if (settings.Value.Monitors.TryGetValue(currentMonitor.FriendlyName, out string? playbackDevice) &&
-                !string.IsNullOrEmpty(playbackDevice))
+        currentMonitorMonitor.CurrentMonitor
+            .Merge(currentMonitorWhenWindowsChangesDefaultDeviceAutomatically)
+            .Subscribe(currentMonitor =>
             {
-                audioDeviceManager.SetDefaultPlaybackDevice(playbackDevice);
-            }
-            else
-            {
-                logger.Information("No playback device set for \"{CurrentMonitor}\"", currentMonitor.FriendlyName);
-            }
-        });
+                if (!settings.Value.Enabled)
+                {
+                    return;
+                }
+
+                logger.Information("Current monitor is \"{CurrentMonitor}\"", currentMonitor.FriendlyName);
+
+                if (settings.Value.Monitors.TryGetValue(currentMonitor.FriendlyName, out string? playbackDevice) &&
+                    !string.IsNullOrEmpty(playbackDevice))
+                {
+                    audioDeviceManager.SetDefaultPlaybackDevice(playbackDevice);
+                }
+                else
+                {
+                    logger.Information("No playback device set for \"{CurrentMonitor}\"", currentMonitor.FriendlyName);
+                }
+            });
 
         provider.GetRequiredService<WindowMessageListener>();
         provider.GetRequiredService<TrayIcon>().Show();
