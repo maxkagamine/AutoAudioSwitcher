@@ -5,6 +5,7 @@ using CoreAudio;
 using Serilog;
 using Serilog.Events;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 
 namespace AutoAudioSwitcher;
@@ -13,8 +14,8 @@ internal sealed class AudioDeviceManager : IDisposable
 {
     private readonly MMDeviceEnumerator deviceEnumerator;
     private readonly MMNotificationClient notificationClient;
+    private readonly CompositeDisposable disposables = [];
     private readonly ILogger logger;
-    private readonly IDisposable playbackDevicesSubscription;
 
     public AudioDeviceManager(ILogger logger)
     {
@@ -60,14 +61,44 @@ internal sealed class AudioDeviceManager : IDisposable
             .Do(devices => logger.Information("Playback devices: {Devices}", devices))
             .Replay(1);
 
-        playbackDevicesSubscription = playbackDevices.Connect();
+        // There is also a "Console" role for system sounds and (oddly) games that's distinct from Multimedia, but it's
+        // not exposed in the Windows UI, and in fact when you change one the OS automatically sets the other.
+        var initialDefaultMultimediaDevice = GetDeviceName(deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia));
+        var initialDefaultCommunicationsDevice = GetDeviceName(deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Communications));
+
+        var defaultPlaybackDevice = Observable.FromEventPattern<DefaultDeviceChangedEventArgs>(
+            handler => notificationClient.DefaultDeviceChanged += handler,
+            handler => notificationClient.DefaultDeviceChanged -= handler)
+            .Where(e => e.EventArgs.DataFlow is DataFlow.Render &&
+                        e.EventArgs.Role is Role.Multimedia or Role.Communications)
+            .Do(e => LogDeviceEvent($"DefaultDeviceChanged ({e.EventArgs.Role})", e.EventArgs))
+            .Scan(new DefaultAudioDevice(initialDefaultMultimediaDevice, initialDefaultCommunicationsDevice),
+                (DefaultAudioDevice d, EventPattern<DefaultDeviceChangedEventArgs> e) =>
+                    e.EventArgs.Role is Role.Multimedia ?
+                        d with { Multimedia = GetDeviceName(e.EventArgs) } :
+                        d with { Communications = GetDeviceName(e.EventArgs) })
+            .Throttle(TimeSpan.FromMilliseconds(20))
+            .DistinctUntilChanged()
+            .Do(d => logger.Information("Default playback device: {DefaultDevices}", d))
+            .Replay(1);
+
+        disposables.Add(playbackDevices.Connect());
+        disposables.Add(defaultPlaybackDevice.Connect());
+
         PlaybackDevices = playbackDevices;
+        DefaultPlaybackDevice = defaultPlaybackDevice;
     }
 
     /// <summary>
     /// The names of the active playback devices, sorted. Observers will receive the latest value immediately.
     /// </summary>
     public IObservable<IEnumerable<string>> PlaybackDevices { get; }
+
+    /// <summary>
+    /// The names of the default multimedia and communications playback devices. Observers will receive the latest value
+    /// immediately.
+    /// </summary>
+    public IObservable<DefaultAudioDevice> DefaultPlaybackDevice { get; }
 
     public void SetDefaultPlaybackDevice(string name)
     {
@@ -96,17 +127,19 @@ internal sealed class AudioDeviceManager : IDisposable
     private static string GetDeviceName(MMDevice device) =>
         device.Properties?[PKey.DeviceDescription]?.Value.ToString() ?? "<Unknown>";
 
+    private static string GetDeviceName(DeviceNotificationEventArgs e) =>
+        e.TryGetDevice(out MMDevice? device) ? GetDeviceName(device!) : "<Unknown>";
+
     private void LogDeviceEvent(string eventName, DeviceNotificationEventArgs e)
     {
         if (logger.IsEnabled(LogEventLevel.Debug))
         {
-            logger.Debug("{Event}: \"{Device}\"",
-                eventName, e.TryGetDevice(out MMDevice? device) ? GetDeviceName(device!) : "<Unknown>");
+            logger.Debug("{Event}: \"{Device}\"", eventName, GetDeviceName(e));
         }
     }
 
     public void Dispose()
     {
-        playbackDevicesSubscription.Dispose();
+        disposables.Dispose();
     }
 }
