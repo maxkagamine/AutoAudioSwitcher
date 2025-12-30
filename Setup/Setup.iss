@@ -54,6 +54,6 @@ Filename: "{app}\AutoAudioSwitcher.exe"; Flags: nowait postinstall
 [Code]
 function InitializeSetup: Boolean;
 begin
-  Dependency_AddDotNet90Desktop;
+  Dependency_AddDotNet100Desktop;
   Result := True;
 end;
