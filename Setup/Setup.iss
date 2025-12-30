@@ -32,6 +32,7 @@ DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE.txt
 OutputBaseFilename=AutoAudioSwitcher-Setup
 PrivilegesRequired=lowest
+RestartApplications=no
 ShowLanguageDialog=auto
 SolidCompression=yes
 VersionInfoProductTextVersion={#ProductVersion}
@@ -49,11 +50,53 @@ Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cr
 Name: "{userstartup}\Auto Audio Switcher"; Filename: "{app}\AutoAudioSwitcher.exe"
 
 [Run]
-Filename: "{app}\AutoAudioSwitcher.exe"; Flags: nowait postinstall
+Filename: "{app}\AutoAudioSwitcher.exe"; Description: "{cm:LaunchProgram,Auto Audio Switcher}"; Flags: nowait postinstall
 
 [Code]
+const
+  APP_MUTEX = 'f09f929b-e98f-a1e9-9fb3-e383aae383b3';
+  WINDOW_NAME = 'Auto Audio Switcher';
+  APP_EXE = 'AutoAudioSwitcher.exe';
+  WM_CLOSE = 16;
+
 function InitializeSetup: Boolean;
 begin
   Dependency_AddDotNet100Desktop;
   Result := True;
+end;
+
+procedure CloseApplication;
+var
+  Hwnd: HWND;
+  Timeout: Integer;
+  ErrorCode: Integer;
+begin
+  if not CheckForMutexes(APP_MUTEX) then
+    exit;
+  Hwnd := FindWindowByWindowName(WINDOW_NAME);
+  if Hwnd <> 0 then
+  begin
+    SendMessage(Hwnd, WM_CLOSE, 0, 0);
+    Timeout := 100; // 10s
+    while (Timeout > 0) and CheckForMutexes(APP_MUTEX) do
+    begin
+      Sleep(100);
+      Timeout := Timeout - 1;
+    end;
+  end;
+  if CheckForMutexes(APP_MUTEX) then
+    Exec('taskkill.exe', '/f /im ' + APP_EXE, '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  OriginalCaption: String;
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    OriginalCaption := UninstallProgressForm.StatusLabel.Caption;
+    UninstallProgressForm.StatusLabel.Caption := SetupMessage(msgStatusClosingApplications);
+    CloseApplication;
+    UninstallProgressForm.StatusLabel.Caption := OriginalCaption;
+  end;
 end;

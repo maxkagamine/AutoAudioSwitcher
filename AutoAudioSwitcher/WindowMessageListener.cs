@@ -17,7 +17,11 @@ internal sealed class WindowMessageListener : NativeWindow, IDisposable
     {
         this.logger = logger.ForContext<WindowMessageListener>();
 
-        CreateHandle(new CreateParams());
+        CreateHandle(new CreateParams()
+        {
+            // Used by custom uninstaller code to send WM_CLOSE, since Inno doesn't close applications when uninstalling
+            Caption = "Auto Audio Switcher"
+        });
     }
 
     /// <inheritdoc cref="WM_DISPLAYCHANGE"/>

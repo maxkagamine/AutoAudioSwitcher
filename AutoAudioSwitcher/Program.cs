@@ -60,7 +60,7 @@ internal sealed class Program
     [STAThread]
     public static void Main()
     {
-        using Mutex singleInstance = new(true, "f09f929b-e98f-a1e9-9fb3-e383aae383b3" /* This is my favorite GUID */, out bool createdNew);
+        Mutex singleInstance = new(true, "f09f929b-e98f-a1e9-9fb3-e383aae383b3" /* This is my favorite GUID */, out bool createdNew);
         if (!createdNew)
         {
             return;
