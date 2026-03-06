@@ -12,6 +12,7 @@ using Serilog.Templates;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Text.Json;
 
 namespace AutoAudioSwitcher;
 
@@ -20,6 +21,7 @@ internal sealed class Program
     private static readonly TimeSpan WindowsAutomaticDefaultDeviceChangeThreshold = TimeSpan.FromSeconds(2);
 
     private const string LogsDirectory = "logs";
+    public const string SettingsFile = "appsettings.json";
 
     private static readonly LoggingLevelSwitch levelSwitch = new(LogEventLevel.Error);
     private static ServiceProvider? provider;
@@ -30,13 +32,19 @@ internal sealed class Program
     {
         ServiceCollection services = new();
 
-        if (!File.Exists("appsettings.json"))
+        if (!File.Exists(SettingsFile))
         {
             new Settings().Save();
         }
 
         IConfiguration config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile(SettingsFile, optional: false, reloadOnChange: true)
+            .SetFileLoadExceptionHandler(e =>
+            {
+                // Happens if the file is empty or not a JSON object. This will revert the settings to default; no point
+                // showing an error here since IConfiguration normally ignores invalid property values anyway.
+                e.Ignore = e.Exception.GetBaseException() is JsonException;
+            })
             .Build();
 
         services.ConfigureObservable<Settings>(config);

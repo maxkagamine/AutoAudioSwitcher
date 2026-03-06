@@ -27,12 +27,25 @@ internal sealed record Settings : IEquatable<Settings?>
     public LogEventLevel LogLevel { get; init; } = LogEventLevel.Error;
 
     /// <summary>
-    /// Writes the current <see cref="Settings"/> to appsettings.json.
+    /// Writes the current <see cref="Settings"/> to the settings file.
     /// </summary>
     public void Save()
     {
-        using FileStream file = File.Open("appsettings.json", FileMode.Create, FileAccess.Write);
-        JsonSerializer.Serialize(file, this, SettingsSerializerContext.Default.Options);
+        try
+        {
+            string tempFile = $"{Program.SettingsFile}.tmp";
+
+            using (FileStream file = File.Open(tempFile, FileMode.Create, FileAccess.Write))
+            {
+                JsonSerializer.Serialize(file, this, SettingsSerializerContext.Default.Options);
+            }
+
+            File.Move(tempFile, Program.SettingsFile, overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to save settings file \"{Path.GetFullPath(Program.SettingsFile)}\".", ex);
+        }
     }
 
     public bool Equals(Settings? other)
