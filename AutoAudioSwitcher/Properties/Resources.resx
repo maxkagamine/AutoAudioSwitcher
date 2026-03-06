@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -141,5 +141,14 @@
   </data>
   <data name="ProgramName" xml:space="preserve">
     <value>Auto Audio Switcher</value>
+  </data>
+  <data name="UnhandledException" xml:space="preserve">
+    <value>Unhandled exception.</value>
+  </data>
+  <data name="Restart" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="OpenLogDirectory" xml:space="preserve">
+    <value>Open log directory</value>
   </data>
 </root>

@@ -1,6 +1,7 @@
 // Copyright (c) Max Kagamine
 // Licensed under the Apache License, Version 2.0
 
+using AutoAudioSwitcher.Properties;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
@@ -8,6 +9,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Templates;
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
 
@@ -16,7 +18,13 @@ namespace AutoAudioSwitcher;
 internal sealed class Program
 {
     private static readonly TimeSpan WindowsAutomaticDefaultDeviceChangeThreshold = TimeSpan.FromSeconds(2);
+
+    private const string LogsDirectory = "logs";
+
     private static readonly LoggingLevelSwitch levelSwitch = new(LogEventLevel.Error);
+    private static ServiceProvider? provider;
+    private static ILogger? logger;
+    private static Mutex? singleInstanceMutex;
 
     private static ServiceProvider ConfigureServices()
     {
@@ -39,7 +47,7 @@ internal sealed class Program
             .MinimumLevel.Debug()
             .WriteTo.Debug()
             .WriteTo.File(
-                path: "error.log",
+                path: Path.Combine(LogsDirectory, ".log"),
                 formatter: new ExpressionTemplate(
                     "{@t:yyyy-MM-dd HH:mm:ss.fff zzz} [{@l:u3}] {#if SourceContext is not null}[{Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1)}] {#end}{@m}\n{@x}"),
                 levelSwitch: levelSwitch,
@@ -60,13 +68,19 @@ internal sealed class Program
     [STAThread]
     public static void Main()
     {
-        Mutex singleInstance = new(true, "f09f929b-e98f-a1e9-9fb3-e383aae383b3" /* This is my favorite GUID */, out bool createdNew);
+        singleInstanceMutex = new(true, "f09f929b-e98f-a1e9-9fb3-e383aae383b3" /* This is my favorite GUID */, out bool createdNew);
         if (!createdNew)
         {
             return;
         }
 
+        Environment.CurrentDirectory = AppContext.BaseDirectory;
+
         //CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = new("ja-JP");
+
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        Application.ThreadException += (sender, e) => HandleCrash(e.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (sender, e) => HandleCrash((Exception)e.ExceptionObject);
 
         ApplicationConfiguration.Initialize();
 
@@ -79,17 +93,9 @@ internal sealed class Program
             Application.SetColorMode(IsSystemDarkModeEnabled() ? SystemColorMode.Dark : SystemColorMode.Classic);
         };
 
-        Environment.CurrentDirectory = AppContext.BaseDirectory;
-        ServiceProvider provider = ConfigureServices();
-
-        var logger = provider.GetRequiredService<ILogger>();
+        provider = ConfigureServices();
+        logger = provider.GetRequiredService<ILogger>();
         logger.Information("Application is starting.");
-
-        AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
-        {
-            logger.Fatal((Exception)e.ExceptionObject, "Unhandled exception.");
-            provider.Dispose();
-        };
 
         Application.ApplicationExit += (_, _) =>
         {
@@ -203,5 +209,57 @@ internal sealed class Program
         catch { }
 
         return systemUsesLightTheme == 0;
+    }
+
+    private static void HandleCrash(Exception ex)
+    {
+        try
+        {
+            logger?.Fatal(ex, "Unhandled exception.");
+            provider?.Dispose();
+        }
+        catch { }
+
+        try
+        {
+            TaskDialogCommandLinkButton restartButton = new(Resources.Restart);
+            TaskDialogCommandLinkButton exitButton = new(Resources.Exit);
+            TaskDialogCommandLinkButton logsButton = new(Resources.OpenLogDirectory, allowCloseDialog: false);
+
+            string str = ex.ToString();
+            var stackTraceIndex = str.IndexOf("   at ", StringComparison.OrdinalIgnoreCase);
+            string text = stackTraceIndex > 0 ? str[..stackTraceIndex].TrimEnd() : str;
+            TaskDialogExpander? stackTrace = stackTraceIndex > 0 ? new(str[stackTraceIndex..]) : null;
+
+            text = text.Replace("\\", "\\\u200B"); // Zero width space to allow paths to wrap instead of getting shortened with an ellipsis
+
+            TaskDialogPage taskDialog = new()
+            {
+                Heading = Resources.UnhandledException,
+                Text = text,
+                Expander = stackTrace,
+                SizeToContent = true,
+                Caption = Resources.ProgramName,
+                Icon = TaskDialogIcon.Error,
+                Buttons = logger is null ? // Don't show logs button if program crashed during init before logger setup
+                    [restartButton, exitButton] :
+                    [restartButton, exitButton, logsButton],
+            };
+
+            logsButton.Click += (_, _) =>
+            {
+                Process.Start(new ProcessStartInfo(LogsDirectory) { UseShellExecute = true });
+            };
+
+            if (TaskDialog.ShowDialog(taskDialog) == restartButton)
+            {
+                singleInstanceMutex?.Dispose();
+                Application.Restart();
+                return;
+            }
+        }
+        catch { }
+
+        Application.Exit();
     }
 }

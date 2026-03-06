@@ -19,7 +19,7 @@ namespace AutoAudioSwitcher.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "18.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -88,11 +88,29 @@ namespace AutoAudioSwitcher.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open log directory.
+        /// </summary>
+        internal static string OpenLogDirectory {
+            get {
+                return ResourceManager.GetString("OpenLogDirectory", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Auto Audio Switcher.
         /// </summary>
         internal static string ProgramName {
             get {
                 return ResourceManager.GetString("ProgramName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Restart.
+        /// </summary>
+        internal static string Restart {
+            get {
+                return ResourceManager.GetString("Restart", resourceCulture);
             }
         }
         
@@ -133,6 +151,15 @@ namespace AutoAudioSwitcher.Properties {
             get {
                 object obj = ResourceManager.GetObject("TrayIconLightDisabled", resourceCulture);
                 return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unhandled exception..
+        /// </summary>
+        internal static string UnhandledException {
+            get {
+                return ResourceManager.GetString("UnhandledException", resourceCulture);
             }
         }
     }

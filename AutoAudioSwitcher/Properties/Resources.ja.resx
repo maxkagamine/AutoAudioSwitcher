@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -141,5 +141,14 @@
   </data>
   <data name="ProgramName" xml:space="preserve">
     <value>オートオーディオスイッチャー</value>
+  </data>
+  <data name="UnhandledException" xml:space="preserve">
+    <value>未処理の例外</value>
+  </data>
+  <data name="Restart" xml:space="preserve">
+    <value>再起動</value>
+  </data>
+  <data name="OpenLogDirectory" xml:space="preserve">
+    <value>ログのディレクトリを開く</value>
   </data>
 </root>
