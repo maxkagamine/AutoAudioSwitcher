@@ -40,8 +40,8 @@ VersionInfoVersion={#FileVersion}
 WizardStyle=classic dynamic
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
+Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "ja"; MessagesFile: "compiler:Languages\Japanese.isl"
 
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -63,6 +63,12 @@ function InitializeSetup: Boolean;
 begin
   Dependency_AddDotNet100Desktop;
   Result := True;
+end;
+
+procedure InitializeWizard;
+begin
+  WizardForm.LicenseMemo.Font.Name := 'Consolas';
+  WizardForm.LicenseMemo.UseRichEdit := False;
 end;
 
 procedure CloseApplication;
