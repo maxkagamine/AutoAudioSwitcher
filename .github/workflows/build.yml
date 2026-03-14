@@ -1,7 +1,8 @@
 on:
-  release:
-    types: [ published ]
   pull_request:
+  push:
+    branches: [ 'master' ]
+    tags: [ 'v*.*.*' ]
 
 jobs:
   build:
@@ -19,10 +20,8 @@ jobs:
 
       - name: Build
         run: |
-          $ErrorActionPreference = 'Stop'
-
-          if ('${{ github.event_name }}' -eq 'release') {
-            $ver = '${{ github.event.release.tag_name }}'.TrimStart('v')
+          if ('${{ github.event_name == 'push' && github.ref_type == 'tag' }}' -eq 'true') {
+            $ver = $env:GITHUB_REF -replace '^refs/tags/v'
           } else {
             $ver = '0.0.0'
           }
@@ -30,8 +29,10 @@ jobs:
           dotnet.exe publish AutoAudioSwitcher -o publish -p:Version="$ver"
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' .\Setup\Setup.iss
 
-      - name: Upload release artifact
-        if: github.event_name == 'release'
+      - name: Create release draft
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.event.release.tag_name }} Setup\Output\AutoAudioSwitcher-Setup.exe
+        run: |
+          $tag = $env:GITHUB_REF -replace '^refs/tags/'
+          gh release create --draft --title $tag $tag Setup\Output\AutoAudioSwitcher-Setup.exe
